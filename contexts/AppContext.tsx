@@ -60,21 +60,21 @@ export const [AppProvider, useApp] = createContextHook(() => {
           console.log(`✅ ${allWorkouts.length} planes de entrenamiento sincronizados`);
           setWorkoutPlans(allWorkouts);
         } else {
-          setWorkoutPlans([]);
+          console.log('ℹ️ Sin entrenamientos remotos; manteniendo datos locales');
         }
 
         if (allDiets.length > 0) {
           console.log(`✅ ${allDiets.length} planes de dieta sincronizados`);
           setDietPlans(allDiets);
         } else {
-          setDietPlans([]);
+          console.log('ℹ️ Sin dietas remotas; manteniendo datos locales');
         }
 
         if (allProgress.length > 0) {
           console.log(`✅ ${allProgress.length} registros de progreso sincronizados`);
           setProgress(allProgress);
         } else {
-          setProgress([]);
+          console.log('ℹ️ Sin progreso remoto; manteniendo datos locales');
         }
       } else {
         const [remoteWorkouts, remoteDiets, remoteProgress] = await Promise.all([
@@ -92,20 +92,25 @@ export const [AppProvider, useApp] = createContextHook(() => {
           }),
         ]);
 
-        setWorkoutPlans(remoteWorkouts || []);
-        setDietPlans(remoteDiets || []);
-        setProgress(remoteProgress || []);
-
         if (remoteWorkouts && remoteWorkouts.length > 0) {
+          setWorkoutPlans(remoteWorkouts);
           console.log(`✅ ${remoteWorkouts.length} planes de entrenamiento sincronizados`);
+        } else {
+          console.log('ℹ️ Sin entrenamientos remotos; manteniendo datos locales');
         }
 
         if (remoteDiets && remoteDiets.length > 0) {
+          setDietPlans(remoteDiets);
           console.log(`✅ ${remoteDiets.length} planes de dieta sincronizados`);
+        } else {
+          console.log('ℹ️ Sin dietas remotas; manteniendo datos locales');
         }
 
         if (remoteProgress && remoteProgress.length > 0) {
+          setProgress(remoteProgress);
           console.log(`✅ ${remoteProgress.length} registros de progreso sincronizados`);
+        } else {
+          console.log('ℹ️ Sin progreso remoto; manteniendo datos locales');
         }
       }
 
