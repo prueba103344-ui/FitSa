@@ -1,6 +1,7 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { User, Student, Trainer, WorkoutPlan, DietPlan, DailyProgress } from '@/types';
 import { mockTrainer, mockStudent, mockStudents, mockWorkoutPlans, mockDietPlans, mockProgress } from '@/data/mockData';
 import { trpcClient } from '@/lib/trpc';
@@ -16,8 +17,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>(mockWorkoutPlans);
   const [dietPlans, setDietPlans] = useState<DietPlan[]>(mockDietPlans);
   const [progress, setProgress] = useState<DailyProgress[]>(mockProgress);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [isHydrated, setIsHydrated] = useState<boolean>(false);
 
   const syncFromBackend = useCallback(async (userId?: string, userRole?: 'trainer' | 'student') => {
     console.log('🔄 Sincronizando datos desde el backend...');
@@ -126,6 +128,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const loadData = useCallback(async () => {
     console.log('📱 Cargando datos...');
+    setIsLoading(true);
     try {
       const storedUser = await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER);
 
@@ -135,16 +138,25 @@ export const [AppProvider, useApp] = createContextHook(() => {
         console.log(`👤 Usuario cargado: ${user.name}`);
       }
 
-      await syncFromBackend();
+      if (Platform.OS !== 'web') {
+        await syncFromBackend();
+      }
     } catch (error) {
       console.error('❌ Error cargando datos:', error);
     } finally {
       setIsLoading(false);
+      setIsHydrated(true);
     }
   }, [syncFromBackend]);
 
   useEffect(() => {
-    loadData();
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        loadData();
+      }, 100);
+    } else {
+      loadData();
+    }
   }, [loadData]);
 
   const loginAsTrainer = useCallback(async () => {
@@ -381,6 +393,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     progress,
     isLoading,
     isSyncing,
+    isHydrated,
     loginAsTrainer,
     loginAsStudent,
     logout,
@@ -406,6 +419,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     progress,
     isLoading,
     isSyncing,
+    isHydrated,
     loginAsTrainer,
     loginAsStudent,
     logout,
