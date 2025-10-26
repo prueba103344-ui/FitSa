@@ -17,6 +17,7 @@ import { useApp } from '@/contexts/AppContext';
 import colors from '@/constants/colors';
 import { ArrowLeft, TrendingUp, Dumbbell, Apple, Edit3, X, Plus, Trash2, ChefHat, ImagePlus } from 'lucide-react-native';
 import { Student, WorkoutPlan, DietPlan, Exercise, ExerciseSet, Meal, Food } from '@/types';
+import Avatar from '@/components/Avatar';
 import * as ImagePicker from 'expo-image-picker';
 import { KeyboardAvoidingView } from 'react-native';
 
@@ -466,10 +467,7 @@ export default function StudentProfileScreen() {
       </View>
 
       <View style={styles.profileHeader}>
-        <Image
-          source={{ uri: student.avatar }}
-          style={styles.profileAvatar}
-        />
+        <Avatar uri={student.avatar} name={student.name} size={100} borderColor={colors.neon} testID={"student-profile-avatar"} />
         <Text style={styles.profileName}>{student.name}</Text>
         {student.age && <Text style={styles.profileDetail}>{student.age} años</Text>}
         {student.email && <Text style={styles.profileDetail}>{student.email}</Text>}

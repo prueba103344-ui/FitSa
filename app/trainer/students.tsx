@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Modal,
   TextInput,
   Alert,
@@ -16,6 +15,7 @@ import { useApp } from '@/contexts/AppContext';
 import colors from '@/constants/colors';
 import { Plus, X, Trash2, Eye } from 'lucide-react-native';
 import { Trainer, Student } from '@/types';
+import Avatar from '@/components/Avatar';
 
 export default function StudentsScreen() {
   const insets = useSafeAreaInsets();
@@ -115,10 +115,7 @@ export default function StudentsScreen() {
           <>
             {clients.map((student) => (
               <View key={student.id} style={styles.clientCard} testID={`student-${student.id}`}>
-                <Image
-                  source={{ uri: student.avatar ?? 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop' }}
-                  style={styles.clientAvatar}
-                />
+                <Avatar uri={student.avatar} name={student.name} size={80} borderColor={colors.neon} testID={`student-avatar-${student.id}`} />
                 <View style={styles.clientInfo}>
                   <Text style={styles.clientName}>{student.name}</Text>
                   {student.age ? (

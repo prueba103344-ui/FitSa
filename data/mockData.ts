@@ -13,7 +13,7 @@ export const mockStudents: Student[] = [
     phone: '+34 612 345 678',
     goal: 'Ganar masa muscular y mejorar fuerza',
     medicalNotes: 'Sin lesiones previas',
-    avatar: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400&h=400&fit=crop',
+    avatar: undefined,
   },
 ];
 
@@ -22,7 +22,7 @@ export const mockTrainer: Trainer = {
   name: 'Laura FitCoach',
   role: 'trainer',
   clients: mockStudents,
-  avatar: 'https://images.unsplash.com/photo-1594381898411-846e7d193883?w=400&h=400&fit=crop',
+  avatar: undefined,
 };
 
 export const mockStudent: Student = mockStudents[0];

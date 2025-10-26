@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Switch,
   Alert,
 } from 'react-native';
@@ -24,6 +23,7 @@ import {
   ChevronRight 
 } from 'lucide-react-native';
 import { Trainer } from '@/types';
+import Avatar from '@/components/Avatar';
 
 export default function TrainerSettings() {
   const insets = useSafeAreaInsets();
@@ -63,10 +63,7 @@ export default function TrainerSettings() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.profileCard}>
-          <Image
-            source={{ uri: trainer.avatar }}
-            style={styles.avatar}
-          />
+          <Avatar uri={trainer.avatar} name={trainer.name} size={64} borderColor={colors.neon} testID="trainer-settings-avatar" />
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{trainer.name}</Text>
             <Text style={styles.profileRole}>Entrenador Personal</Text>

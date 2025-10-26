@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -13,6 +12,7 @@ import { useApp } from '@/contexts/AppContext';
 import colors from '@/constants/colors';
 import { Dumbbell, Apple, Users, LogOut, CalendarDays, TrendingUp } from 'lucide-react-native';
 import { Trainer } from '@/types';
+import Avatar from '@/components/Avatar';
 
 export default function TrainerDashboard() {
   const insets = useSafeAreaInsets();
@@ -52,10 +52,7 @@ export default function TrainerDashboard() {
       >
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Image
-              source={{ uri: trainer.avatar }}
-              style={styles.avatar}
-            />
+            <Avatar uri={trainer.avatar} name={trainer.name} size={48} borderColor={'#FF6B35'} testID="trainer-avatar" />
             <View>
               <Text style={styles.welcomeText}>Hola Coach!</Text>
               <Text style={styles.userName}>{trainer.name}</Text>
@@ -97,10 +94,7 @@ export default function TrainerDashboard() {
               style={styles.clientCard}
               onPress={() => router.push(`/trainer/progress?studentId=${student.id}` as any)}
             >
-              <Image
-                source={{ uri: student.avatar }}
-                style={styles.clientAvatar}
-              />
+              <Avatar uri={student.avatar} name={student.name} size={64} borderColor={colors.neon} testID={`student-avatar-${student.id}`} />
               <View style={styles.clientInfo}>
                 <Text style={styles.clientName}>{student.name}</Text>
                 <View style={styles.clientStats}>
