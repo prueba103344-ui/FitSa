@@ -16,6 +16,7 @@ import { colors } from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { Student } from '@/types';
 import { ChevronLeft, ChevronRight, TrendingUp, ChevronDown, ChevronUp, Check, Sparkles, Edit2, X } from 'lucide-react-native';
+import AnimatedSaveButton from '@/components/AnimatedSaveButton';
 
 export default function StudentTrainingScreen() {
   const { currentUser, workoutPlans, updateWorkoutPlan } = useApp();
@@ -111,15 +112,15 @@ export default function StudentTrainingScreen() {
     
     Animated.sequence([
       Animated.spring(animationScale, {
-        toValue: isBig ? 1.5 : 1,
-        friction: 3,
-        tension: 40,
+        toValue: isBig ? 1.2 : 1,
+        friction: 4,
+        tension: 50,
         useNativeDriver: true,
       }),
       Animated.timing(animationScale, {
         toValue: 0,
-        duration: 400,
-        delay: isBig ? 1000 : 500,
+        duration: 500,
+        delay: isBig ? 1500 : 600,
         useNativeDriver: true,
       })
     ]).start(() => {
@@ -149,10 +150,10 @@ export default function StudentTrainingScreen() {
 
     await updateWorkoutPlan(workoutId, { exercises: updatedExercises });
 
-    if (allSetsCompleted && !exercise.sets.every(s => s.completed)) {
-      showAnimation('🎯 ¡Ejercicio completado!', false);
-    } else if (allExercisesCompleted) {
+    if (allExercisesCompleted && !workout.exercises.every(ex => ex.sets.every(s => s.completed))) {
       showAnimation('🔥 ¡Entrenamiento completado!', true);
+    } else if (allSetsCompleted && !exercise.sets.every(s => s.completed)) {
+      showAnimation('🎯 ¡Ejercicio completado!', true);
     } else {
       showAnimation('✓ Serie completada', false);
     }
@@ -457,12 +458,12 @@ export default function StudentTrainingScreen() {
                 >
                   <Text style={styles.modalButtonTextCancel}>Cancelar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.modalButton, styles.modalButtonSave]}
+                <AnimatedSaveButton 
                   onPress={saveEditSet}
-                >
-                  <Text style={styles.modalButtonText}>Guardar</Text>
-                </TouchableOpacity>
+                  title="Guardar"
+                  style={[styles.modalButton, styles.modalButtonSave]}
+                  textStyle={styles.modalButtonText}
+                />
               </View>
             </View>
           </View>

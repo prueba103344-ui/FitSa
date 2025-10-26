@@ -7,6 +7,7 @@ import { useApp } from '@/contexts/AppContext';
 import { WorkoutPlan, Exercise, ExerciseSet, Trainer } from '@/types';
 import { Edit2 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import AnimatedSaveButton from '@/components/AnimatedSaveButton';
 
 export default function TrainerWorkoutsScreen() {
   const { currentUser, workoutPlans, students, addWorkoutPlan, updateWorkoutPlan, deleteWorkoutPlan } = useApp();
@@ -390,9 +391,12 @@ export default function TrainerWorkoutsScreen() {
                 )}
               </View>
 
-              <TouchableOpacity style={styles.saveButton} onPress={handleSavePlan}>
-                <Text style={styles.saveButtonText}>Guardar Plan</Text>
-              </TouchableOpacity>
+              <AnimatedSaveButton 
+                onPress={handleSavePlan}
+                title="Guardar Plan"
+                style={styles.saveButton}
+                textStyle={styles.saveButtonText}
+              />
             </ScrollView>
           </View>
         </View>

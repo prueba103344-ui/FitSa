@@ -22,6 +22,7 @@ import { generateText } from '@rork/toolkit-sdk';
 import { getFoodEmoji } from '@/constants/foodEmojis';
 import KeyboardAware from '@/components/KeyboardAware';
 import * as ImagePicker from 'expo-image-picker';
+import AnimatedSaveButton from '@/components/AnimatedSaveButton';
 
 export default function CreateMealScreen() {
   const router = useRouter();
@@ -421,23 +422,23 @@ Ejemplo de respuesta: {"calories": 450, "protein": 35, "carbs": 40, "fat": 15}`;
             </View>
           </View>
 
-          <TouchableOpacity 
-            style={[styles.saveButton, isGeneratingMacros && styles.saveButtonDisabled]} 
-            onPress={saveMeal}
-            disabled={isGeneratingMacros}
-          >
-            {isGeneratingMacros ? (
-              <>
-                <ActivityIndicator color={colors.background} />
-                <Text style={styles.saveButtonText}>Generando macros...</Text>
-              </>
-            ) : (
-              <>
-                <Sparkles size={20} color={colors.background} />
-                <Text style={styles.saveButtonText}>Crear Comida con IA</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          {isGeneratingMacros ? (
+            <TouchableOpacity 
+              style={[styles.saveButton, styles.saveButtonDisabled]} 
+              disabled
+            >
+              <ActivityIndicator color={colors.background} />
+              <Text style={styles.saveButtonText}>Generando macros...</Text>
+            </TouchableOpacity>
+          ) : (
+            <AnimatedSaveButton
+              onPress={saveMeal}
+              title="Crear Comida con IA"
+              icon={<Sparkles size={20} color={colors.background} />}
+              style={styles.saveButton}
+              textStyle={styles.saveButtonText}
+            />
+          )}
           </ScrollView>
         </TouchableWithoutFeedback>
       </SafeAreaView>

@@ -56,17 +56,19 @@ export default function MealDetailScreen() {
     setCompletionMessage(message);
     setShowCompletionAnimation(true);
     
+    animationScale.setValue(0);
+    
     Animated.sequence([
       Animated.spring(animationScale, {
-        toValue: isBig ? 1.5 : 1,
-        friction: 3,
-        tension: 40,
+        toValue: isBig ? 1.2 : 1,
+        friction: 4,
+        tension: 50,
         useNativeDriver: true,
       }),
       Animated.timing(animationScale, {
         toValue: 0,
-        duration: 400,
-        delay: isBig ? 1000 : 500,
+        duration: 500,
+        delay: isBig ? 1500 : 600,
         useNativeDriver: true,
       })
     ]).start(() => {

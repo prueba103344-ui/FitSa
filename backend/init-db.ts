@@ -7,25 +7,25 @@ export async function initializeDatabase() {
     
     let needsUpdate = false;
 
-    if (!db.students) {
+    if (!db.students || db.students.length === 0) {
       console.log('📝 Inicializando estructura de estudiantes...');
       db.students = mockStudents;
       needsUpdate = true;
     }
 
-    if (!db.workouts) {
+    if (!db.workouts || db.workouts.length === 0) {
       console.log('💪 Inicializando estructura de entrenamientos...');
       db.workouts = mockWorkoutPlans;
       needsUpdate = true;
     }
 
-    if (!db.diets) {
+    if (!db.diets || db.diets.length === 0) {
       console.log('🍽️ Inicializando estructura de dietas...');
       db.diets = mockDietPlans;
       needsUpdate = true;
     }
 
-    if (!(db as any).progress) {
+    if (!(db as any).progress || (db as any).progress.length === 0) {
       console.log('📊 Inicializando estructura de progreso...');
       (db as any).progress = mockProgress;
       needsUpdate = true;
@@ -33,10 +33,12 @@ export async function initializeDatabase() {
 
     if (needsUpdate) {
       await writeDB(db as DBData);
-      console.log('✅ Base de datos inicializada');
+      console.log('✅ Base de datos inicializada y guardada en archivo');
     } else {
-      console.log('✅ Base de datos lista');
+      console.log('✅ Base de datos cargada desde archivo');
     }
+
+    console.log(`📊 Estado actual: ${db.workouts?.length || 0} entrenamientos, ${db.diets?.length || 0} dietas`);
   } catch (error) {
     console.error('❌ Error inicializando base de datos:', error);
   }
