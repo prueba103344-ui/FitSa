@@ -1,50 +1,24 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Modal, TextInput, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Modal, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/constants/colors';
+import LineChart from '@/components/LineChart';
 import { useApp } from '@/contexts/AppContext';
 import { Student, ExerciseSet } from '@/types';
-import { TrendingUp, Calendar, Flame, Dumbbell, X, ChevronDown, Plus, Edit2 } from 'lucide-react-native';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { TrendingUp, Calendar, Flame, Dumbbell, X, ChevronDown, Plus } from 'lucide-react-native';
+import { useState, useMemo } from 'react';
 
 const { width } = Dimensions.get('window');
 const GRAPH_WIDTH = width - 80;
 const GRAPH_HEIGHT = 200;
 
 export default function StudentProgressScreen() {
-  const { currentUser, progress, workoutPlans } = useApp();
+  const { currentUser, progress, workoutPlans, updateProgress } = useApp();
   const student = currentUser as Student | null;
   
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [weightModalVisible, setWeightModalVisible] = useState<boolean>(false);
   const [newWeight, setNewWeight] = useState<string>('');
-  const [weightGoal, setWeightGoal] = useState<string>('75');
-  const [weightHistory, setWeightHistory] = useState<{ week: number; weight: number }[]>([
-    { week: 1, weight: 82 },
-    { week: 2, weight: 80 },
-    { week: 3, weight: 78 },
-    { week: 4, weight: 79 },
-    { week: 5, weight: 77 },
-    { week: 6, weight: 76 },
-    { week: 7, weight: 75 },
-    { week: 8, weight: 74 },
-    { week: 9, weight: 73 },
-  ]);
-
-  const barAnimations = useRef(weightHistory.map(() => new Animated.Value(0))).current;
-  const graphBarAnimations = useRef<Animated.Value[]>([]);
-
-  useEffect(() => {
-    barAnimations.forEach((anim, index) => {
-      Animated.spring(anim, {
-        toValue: 1,
-        delay: index * 50,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: false,
-      }).start();
-    });
-  }, [weightHistory]);
 
 
   const last7Days = useMemo(() => {
@@ -115,25 +89,27 @@ export default function StudentProgressScreen() {
     return history.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(-7);
   }, [selectedExercise, workoutPlans, student]);
 
-  const maxWeightInHistory = exerciseHistory.length > 0 
-    ? Math.max(...exerciseHistory.map(h => h.maxWeight)) 
-    : 100;
+  const today = new Date().toISOString().split('T')[0];
 
-  const maxVolumeInHistory = exerciseHistory.length > 0
-    ? Math.max(...exerciseHistory.map(h => h.totalVolume))
-    : 1000;
-
-  const maxWeightInWeightHistory = weightHistory.length > 0
-    ? Math.max(...weightHistory.map(w => w.weight))
-    : 100;
+  const studentWeightHistory = useMemo(() => {
+    if (!student) return [] as { date: string; weight: number }[];
+    return progress
+      .filter(p => p.studentId === student.id && typeof p.weight === 'number')
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .map(p => ({ date: p.date, weight: p.weight as number }));
+  }, [progress, student]);
 
   const addNewWeight = () => {
     const weight = parseFloat(newWeight);
-    if (!isNaN(weight) && weight > 0) {
-      setWeightHistory([...weightHistory, { week: weightHistory.length + 1, weight }]);
-      setNewWeight('');
-      setWeightModalVisible(false);
+    if (isNaN(weight) || weight <= 0) return;
+    const existing = progress.find(p => p.studentId === student?.id && p.date === today);
+    if (!existing) {
+      Alert.alert('No hay registro de hoy', 'Crea primero un registro de progreso hoy antes de añadir peso.');
+      return;
     }
+    updateProgress({ ...existing, weight });
+    setNewWeight('');
+    setWeightModalVisible(false);
   };
 
   if (!student || student.role !== 'student') {
@@ -163,55 +139,25 @@ export default function StudentProgressScreen() {
             </View>
 
             <View style={styles.weightGraph}>
-              <View style={styles.weightGraphBars}>
-                {weightHistory.slice(-9).map((entry, index) => {
-                  const heightPercent = (entry.weight / maxWeightInWeightHistory) * 100;
-                  const barHeight = (200 * heightPercent) / 100;
-                  const isAboveGoal = entry.weight > parseFloat(weightGoal);
-                  const animatedHeight = barAnimations[index]?.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, barHeight],
-                  }) || barHeight;
-                  
-                  return (
-                    <View key={index} style={styles.weightBar}>
-                      <View style={styles.weightBarContainer}>
-                        <Animated.View 
-                          style={[
-                            styles.weightBarFill, 
-                            { 
-                              height: animatedHeight,
-                              backgroundColor: isAboveGoal ? colors.primary : colors.neon,
-                            }
-                          ]} 
-                        />
-                      </View>
-                      <Text style={styles.weightBarLabel}>S{entry.week}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-              <View style={styles.goalLine}>
-                <View style={styles.goalLineDash} />
-                <Text style={styles.goalLineText}>Meta: {weightGoal}kg</Text>
-              </View>
+              {studentWeightHistory.length > 1 ? (
+                <View style={{ width: '100%', alignItems: 'center' }}>
+                  <LineChart
+                    data={studentWeightHistory.slice(-12).map(p => ({ x: p.date, y: p.weight }))}
+                    width={GRAPH_WIDTH}
+                    height={GRAPH_HEIGHT}
+                    color={colors.neon}
+                    gradientFill={colors.neon}
+                    testID="weight-line-chart"
+                  />
+                </View>
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>Aún no hay datos de peso para mostrar</Text>
+                </View>
+              )}
             </View>
 
-            <View style={styles.weightStats}>
-              <View style={styles.weightStatCard}>
-                <Text style={styles.weightStatLabel}>Meta de peso:</Text>
-                <View style={styles.weightStatRow}>
-                  <Text style={styles.weightStatValue}>{weightGoal}kg</Text>
-                  <TouchableOpacity>
-                    <Edit2 size={16} color={colors.primary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-              <View style={styles.weightStatCard}>
-                <Text style={styles.weightStatLabel}>Tiempo restante:</Text>
-                <Text style={styles.weightStatValue}>10/9/2023</Text>
-              </View>
-            </View>
+
 
             <View style={styles.weightLogSection}>
               <Text style={styles.weightLogTitle}>Registro semanal de peso</Text>
@@ -222,14 +168,11 @@ export default function StudentProgressScreen() {
                 <Text style={styles.addWeightButtonText}>Añadir nuevo peso</Text>
                 <Plus size={20} color={colors.primary} />
               </TouchableOpacity>
-              {weightHistory.slice(-4).reverse().map((entry, index) => (
-                <View key={index} style={styles.weightLogItem}>
-                  <Text style={styles.weightLogWeek}>Semana {entry.week}</Text>
+              {studentWeightHistory.slice(-4).reverse().map((entry, index) => (
+                <View key={`${entry.date}-${index}`} style={styles.weightLogItem}>
+                  <Text style={styles.weightLogWeek}>{new Date(entry.date).toLocaleDateString()}</Text>
                   <View style={styles.weightLogRight}>
                     <Text style={styles.weightLogValue}>{entry.weight}kg</Text>
-                    <TouchableOpacity>
-                      <Edit2 size={16} color={colors.primary} />
-                    </TouchableOpacity>
                   </View>
                 </View>
               ))}
@@ -278,90 +221,28 @@ export default function StudentProgressScreen() {
                   <TrendingUp size={20} color={colors.neon} />
                   <Text style={styles.graphTitle}>Peso Máximo (kg)</Text>
                 </View>
-                <View style={styles.graph}>
-                  {exerciseHistory.map((entry, index) => {
-                    const heightPercent = (entry.maxWeight / maxWeightInHistory) * 100;
-                    const barHeight = (GRAPH_HEIGHT * heightPercent) / 100;
-                    
-                    if (!graphBarAnimations.current[index]) {
-                      graphBarAnimations.current[index] = new Animated.Value(0);
-                      Animated.spring(graphBarAnimations.current[index], {
-                        toValue: 1,
-                        delay: index * 80,
-                        tension: 40,
-                        friction: 8,
-                        useNativeDriver: false,
-                      }).start();
-                    }
-
-                    const animatedHeight = graphBarAnimations.current[index].interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, barHeight],
-                    });
-                    
-                    return (
-                      <View key={index} style={styles.graphBar}>
-                        <View style={styles.graphBarContainer}>
-                          <Animated.View 
-                            style={[
-                              styles.graphBarFill, 
-                              { height: animatedHeight }
-                            ]} 
-                          />
-                        </View>
-                        <Text style={styles.graphBarValue}>{entry.maxWeight}</Text>
-                        <Text style={styles.graphBarLabel}>
-                          {new Date(entry.date).getDate()}/{new Date(entry.date).getMonth() + 1}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
+                <LineChart
+                  data={exerciseHistory.map(h => ({ x: h.date, y: h.maxWeight }))}
+                  width={GRAPH_WIDTH}
+                  height={GRAPH_HEIGHT}
+                  color={colors.neon}
+                  gradientFill={colors.neon}
+                  testID="exercise-max-line"
+                />
 
                 <View style={[styles.graphTitleRow, { marginTop: 32 }]}>
                   <Flame size={20} color={colors.accent} />
                   <Text style={styles.graphTitle}>Volumen Total (kg)</Text>
                 </View>
-                <View style={styles.graph}>
-                  {exerciseHistory.map((entry, index) => {
-                    const heightPercent = (entry.totalVolume / maxVolumeInHistory) * 100;
-                    const barHeight = (GRAPH_HEIGHT * heightPercent) / 100;
-                    const animIndex = index + exerciseHistory.length;
-                    
-                    if (!graphBarAnimations.current[animIndex]) {
-                      graphBarAnimations.current[animIndex] = new Animated.Value(0);
-                      Animated.spring(graphBarAnimations.current[animIndex], {
-                        toValue: 1,
-                        delay: index * 80,
-                        tension: 40,
-                        friction: 8,
-                        useNativeDriver: false,
-                      }).start();
-                    }
+                <LineChart
+                  data={exerciseHistory.map(h => ({ x: h.date, y: h.totalVolume }))}
+                  width={GRAPH_WIDTH}
+                  height={GRAPH_HEIGHT}
+                  color={colors.accent}
+                  gradientFill={colors.accent}
+                  testID="exercise-volume-line"
+                />
 
-                    const animatedHeight = graphBarAnimations.current[animIndex].interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, barHeight],
-                    });
-                    
-                    return (
-                      <View key={index} style={styles.graphBar}>
-                        <View style={styles.graphBarContainer}>
-                          <Animated.View 
-                            style={[
-                              styles.graphBarFill, 
-                              { height: animatedHeight, backgroundColor: colors.accent }
-                            ]} 
-                          />
-                        </View>
-                        <Text style={styles.graphBarValue}>{entry.totalVolume}</Text>
-                        <Text style={styles.graphBarLabel}>
-                          {new Date(entry.date).getDate()}/{new Date(entry.date).getMonth() + 1}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
               </View>
             )}
 
