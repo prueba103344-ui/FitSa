@@ -46,8 +46,9 @@ export async function writeDB(data: DBData): Promise<void> {
   
   try {
     await fs.promises.writeFile(DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
-    console.log('💾 Base de datos guardada en archivo');
+    console.log(`💾 Base de datos guardada en archivo (${data.students?.length || 0} estudiantes, ${data.workouts?.length || 0} entrenamientos, ${data.diets?.length || 0} dietas)`);
   } catch (error) {
     console.error('❌ Error guardando base de datos:', error);
+    throw error;
   }
 }

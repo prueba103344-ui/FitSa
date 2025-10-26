@@ -68,16 +68,28 @@ export default createTRPCRouter({
   upsert: publicProcedure.input(dietInput).mutation(async ({ input }) => {
     const db = await readDB();
     const idx = db.diets.findIndex(d => d.id === input.id);
-    if (idx >= 0) db.diets[idx] = input as DietPlan; else db.diets.push(input as DietPlan);
+    if (idx >= 0) {
+      console.log(`✏️ Actualizando dieta existente: ${input.name || 'Sin nombre'} (ID: ${input.id})`);
+      db.diets[idx] = input as DietPlan;
+    } else {
+      console.log(`➕ Creando nueva dieta: ${input.name || 'Sin nombre'} (ID: ${input.id})`);
+      db.diets.push(input as DietPlan);
+    }
     await writeDB(db);
+    console.log(`✅ Dieta guardada exitosamente. Total: ${db.diets.length}`);
     return input;
   }),
   update: publicProcedure.input(z.object({ id: z.string(), updates: dietInput.partial() })).mutation(async ({ input }) => {
+    console.log(`🔄 Solicitud de actualización de dieta: ${input.id}`);
     const db = await readDB();
     const idx = db.diets.findIndex(d => d.id === input.id);
-    if (idx < 0) throw new Error('Diet not found');
+    if (idx < 0) {
+      console.error(`❌ Dieta no encontrada: ${input.id}`);
+      throw new Error('Diet not found');
+    }
     db.diets[idx] = { ...db.diets[idx], ...(input.updates as Partial<DietPlan>) } as DietPlan;
     await writeDB(db);
+    console.log(`✅ Dieta actualizada: ${db.diets[idx].name || 'Sin nombre'}`);
     return db.diets[idx];
   }),
   remove: publicProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
