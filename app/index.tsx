@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/contexts/AppContext';
 import colors from '@/constants/colors';
-import { Dumbbell, User } from 'lucide-react-native';
+import { Dumbbell, User, Shield } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -16,20 +16,16 @@ export default function LandingScreen() {
 
   const handleTrainerPress = async () => {
     await loginAsTrainer();
-    if (Platform.OS === 'web') {
-      router.replace('/trainer/' as any);
-    } else {
-      router.replace('/trainer/' as any);
-    }
+    router.replace('/trainer/' as any);
   };
 
   const handleStudentPress = async () => {
     await loginAsStudent();
-    if (Platform.OS === 'web') {
-      router.replace('/student/' as any);
-    } else {
-      router.replace('/student/' as any);
-    }
+    router.replace('/student/' as any);
+  };
+
+  const handleDemoPress = () => {
+    router.push('/demo' as any);
   };
 
   return (
@@ -48,7 +44,7 @@ export default function LandingScreen() {
               <View style={styles.logoContainer}>
                 <Dumbbell size={48} color={colors.neon} strokeWidth={2.5} />
               </View>
-              <Text style={styles.logo}>FitSync</Text>
+              <Text style={styles.logo}>FitSa</Text>
               <Text style={styles.tagline}>Entrena, come y progresa con precisión 💪</Text>
             </View>
 
@@ -57,6 +53,7 @@ export default function LandingScreen() {
                 style={[styles.button, styles.trainerButton]}
                 onPress={handleTrainerPress}
                 activeOpacity={0.8}
+                testID="login-trainer"
               >
                 <LinearGradient
                   colors={['#FF6B35', '#FF8C42']}
@@ -73,6 +70,7 @@ export default function LandingScreen() {
                 style={[styles.button, styles.studentButton]}
                 onPress={handleStudentPress}
                 activeOpacity={0.8}
+                testID="login-student"
               >
                 <LinearGradient
                   colors={[colors.neon, colors.neonDark]}
@@ -84,10 +82,27 @@ export default function LandingScreen() {
                   <Text style={[styles.buttonText, styles.studentButtonText]}>Soy Alumno</Text>
                 </LinearGradient>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.button, styles.demoButton]}
+                onPress={handleDemoPress}
+                activeOpacity={0.9}
+                testID="demo-mode"
+              >
+                <LinearGradient
+                  colors={[colors.cardLight, colors.card]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.buttonGradient}
+                >
+                  <Shield size={28} color={colors.neon} strokeWidth={2.5} />
+                  <Text style={[styles.buttonText]}>Modo demo (entrenador)</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Versión demo — sin registro</Text>
+              <Text style={styles.footerText}>El modo demo es seguro, aislado y temporal</Text>
             </View>
           </View>
         </LinearGradient>
@@ -161,16 +176,19 @@ const styles = StyleSheet.create({
   studentButton: {
     shadowColor: colors.neon,
   },
+  demoButton: {
+    shadowColor: colors.border,
+  },
   buttonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 24,
-    paddingHorizontal: 32,
-    gap: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    gap: 12,
   },
   buttonText: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '700' as const,
     color: colors.white,
     letterSpacing: 0.5,
