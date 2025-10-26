@@ -303,61 +303,37 @@ export default function StudentDashboard() {
             </View>
           </View>
         </View>
-        <View style={styles.flashcardsContainer}>
-          <TouchableOpacity
-            testID="flashcard-training"
-            activeOpacity={0.9}
-            onPress={() => router.push({ pathname: '/student/training', params: { day: new Date().getDay().toString() } })}
-            style={[styles.flashcard, { borderColor: colors.neon }]}
-          >
-            <Image
-              source={{ uri: (workoutPlan?.exercises[0]?.imageUrl) ?? 'https://images.unsplash.com/photo-1558611848-73f7eb4001a1?w=1600&q=80' }}
-              style={styles.flashcardImage}
-            />
-            <View style={styles.flashcardOverlay}>
-              <View style={styles.flashcardBadge}>
-                <Dumbbell color={colors.neon} size={22} />
-              </View>
-              <View style={styles.flashcardTextBlock}>
-                <Text style={styles.flashcardTitle}>Entrenamiento</Text>
-                <Text style={styles.flashcardSubtitle}>Hoy</Text>
-              </View>
-              <View style={[styles.flashcardCTA, { backgroundColor: colors.neon }]}>
-                <Text style={styles.flashcardCTAText}>Ver</Text>
-                <ChevronRight size={18} color={colors.background} />
-              </View>
-            </View>
-          </TouchableOpacity>
-          <View style={{ height: 16 }} />
-          <TouchableOpacity
-            testID="flashcard-diet"
-            activeOpacity={0.9}
-            onPress={() => router.push({ pathname: '/student/meals', params: { day: new Date().getDay().toString() } })}
-            style={[styles.flashcard, { borderColor: colors.accent }]}
-          >
-            <Image
-              source={{ uri: (dietPlan?.meals[0]?.imageUrl) ?? 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=1600&q=80' }}
-              style={styles.flashcardImage}
-            />
-            <View style={styles.flashcardOverlay}>
-              <View style={[styles.flashcardBadge, { backgroundColor: colors.accent + '22', borderColor: colors.accent }]}>
-                <Apple color={colors.accent} size={22} />
-              </View>
-              <View style={styles.flashcardTextBlock}>
-                <Text style={styles.flashcardTitle}>Dieta</Text>
-                <Text style={styles.flashcardSubtitle}>Hoy</Text>
-              </View>
-              <View style={[styles.flashcardCTA, { backgroundColor: colors.accent }]}>
-                <Text style={styles.flashcardCTAText}>Ver</Text>
-                <ChevronRight size={18} color={colors.background} />
-              </View>
-            </View>
-          </TouchableOpacity>
+        <View style={styles.caloriesHero}>
+          <View style={styles.caloriesMain}>
+            <Text style={styles.caloriesValue}>{consumedMacros.calories}</Text>
+            <Text style={styles.caloriesLabel}>kcal consumidas</Text>
+          </View>
+          <View style={styles.caloriesDivider} />
+          <View style={styles.caloriesRemaining}>
+            <Text style={styles.caloriesRemainingValue}>{remainingCalories}</Text>
+            <Text style={styles.caloriesRemainingLabel}>restantes</Text>
+          </View>
         </View>
 
-        <View style={{ height: 0 }} />
+        <View style={styles.macrosGrid}>
+          <View style={styles.macroCard}>
+            <Text style={styles.macroValue}>{consumedMacros.protein}g</Text>
+            <Text style={styles.macroLabel}>Proteína</Text>
+            <View style={[styles.macroIndicator, { backgroundColor: colors.neon }]} />
+          </View>
+          <View style={styles.macroCard}>
+            <Text style={styles.macroValue}>{consumedMacros.carbs}g</Text>
+            <Text style={styles.macroLabel}>Carbos</Text>
+            <View style={[styles.macroIndicator, { backgroundColor: colors.accent }]} />
+          </View>
+          <View style={styles.macroCard}>
+            <Text style={styles.macroValue}>{consumedMacros.fat}g</Text>
+            <Text style={styles.macroLabel}>Grasas</Text>
+            <View style={[styles.macroIndicator, { backgroundColor: colors.primary }]} />
+          </View>
+        </View>
 
-        {false && workoutPlan && (
+        {workoutPlan && (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Tu plan de entrenamiento:</Text>
             <TouchableOpacity 
@@ -365,9 +341,9 @@ export default function StudentDashboard() {
               onPress={() => router.push('/student/training')}
               activeOpacity={0.8}
             >
-              {(workoutPlan?.exercises?.length ?? 0) > 0 && workoutPlan?.exercises?.[0]?.imageUrl && (
+              {workoutPlan.exercises.length > 0 && workoutPlan.exercises[0].imageUrl && (
                 <Image
-                  source={{ uri: workoutPlan?.exercises?.[0]?.imageUrl as string }}
+                  source={{ uri: workoutPlan.exercises[0].imageUrl }}
                   style={styles.planCardImage}
                 />
               )}
@@ -376,11 +352,11 @@ export default function StudentDashboard() {
                   <View style={styles.planIconBadge}>
                     <Dumbbell size={24} color={colors.neon} strokeWidth={2.5} />
                   </View>
-                  <Text style={styles.planCardTitle}>{workoutPlan?.name ?? 'Entrenamiento'}</Text>
+                  <Text style={styles.planCardTitle}>{workoutPlan.name || 'Entrenamiento'}</Text>
                 </View>
                 <View style={styles.planCardStats}>
                   <View style={styles.planCardStat}>
-                    <Text style={styles.planCardStatValue}>{workoutPlan?.exercises?.length ?? 0}</Text>
+                    <Text style={styles.planCardStatValue}>{workoutPlan.exercises.length}</Text>
                     <Text style={styles.planCardStatLabel}>Ejercicios</Text>
                   </View>
                   <View style={styles.planCardStat}>
@@ -415,12 +391,12 @@ export default function StudentDashboard() {
               </View>
               <View style={styles.workoutHeroStats}>
                 <View style={styles.workoutHeroStat}>
-                  <Text style={styles.workoutHeroStatValue}>{workoutPlan?.exercises?.length ?? 0}</Text>
+                  <Text style={styles.workoutHeroStatValue}>{workoutPlan.exercises.length}</Text>
                   <Text style={styles.workoutHeroStatLabel}>Ejercicios</Text>
                 </View>
                 <View style={styles.workoutHeroStatDivider} />
                 <View style={styles.workoutHeroStat}>
-                  <Text style={styles.workoutHeroStatValue}>{(workoutPlan?.exercises ?? []).reduce((acc, ex) => acc + ex.sets.length, 0)}</Text>
+                  <Text style={styles.workoutHeroStatValue}>{workoutPlan.exercises.reduce((acc, ex) => acc + ex.sets.length, 0)}</Text>
                   <Text style={styles.workoutHeroStatLabel}>Series</Text>
                 </View>
                 <View style={styles.workoutHeroStatDivider} />
@@ -431,7 +407,7 @@ export default function StudentDashboard() {
               </View>
             </TouchableOpacity>
 
-            {workoutExpanded && (workoutPlan?.exercises ?? []).map((exercise) => (
+            {workoutExpanded && workoutPlan.exercises.map((exercise) => (
               <View key={exercise.id} style={styles.exerciseCard}>
                 {exercise.imageUrl && (
                   <Image
@@ -500,7 +476,7 @@ export default function StudentDashboard() {
           </View>
         )}
 
-        {false && dietPlan && (
+        {dietPlan && (
           <View style={styles.section}>
             <Text style={[styles.sectionLabel, { color: colors.accent }]}>Tu plan de alimentación:</Text>
             <TouchableOpacity 
@@ -508,9 +484,9 @@ export default function StudentDashboard() {
               onPress={() => router.push('/student/meals')}
               activeOpacity={0.8}
             >
-              {(dietPlan?.meals?.length ?? 0) > 0 && dietPlan?.meals?.[0]?.imageUrl && (
+              {dietPlan.meals.length > 0 && dietPlan.meals[0].imageUrl && (
                 <Image
-                  source={{ uri: dietPlan?.meals?.[0]?.imageUrl as string }}
+                  source={{ uri: dietPlan.meals[0].imageUrl }}
                   style={styles.planCardImage}
                 />
               )}
@@ -523,7 +499,7 @@ export default function StudentDashboard() {
                 </View>
                 <View style={styles.planCardStats}>
                   <View style={styles.planCardStat}>
-                    <Text style={styles.planCardStatValue}>{dietPlan?.meals?.length ?? 0}</Text>
+                    <Text style={styles.planCardStatValue}>{dietPlan.meals.length}</Text>
                     <Text style={styles.planCardStatLabel}>Comidas</Text>
                   </View>
                   <View style={styles.planCardStat}>
@@ -554,20 +530,20 @@ export default function StudentDashboard() {
               <View style={styles.workoutHeroStats}>
                 <View style={styles.workoutHeroStat}>
                   <Text style={styles.workoutHeroStatLabel}>Comidas:</Text>
-                  <Text style={styles.workoutHeroStatValue}>{dietPlan?.meals?.length ?? 0}</Text>
+                  <Text style={styles.workoutHeroStatValue}>{dietPlan.meals.length}</Text>
                 </View>
                 <View style={styles.workoutHeroStat}>
                   <Text style={styles.workoutHeroStatLabel}>Calorías:</Text>
-                  <Text style={styles.workoutHeroStatValue}>{dietPlan?.totalCalories ?? 0}</Text>
+                  <Text style={styles.workoutHeroStatValue}>{dietPlan.totalCalories}</Text>
                 </View>
                 <View style={styles.workoutHeroStat}>
                   <Text style={styles.workoutHeroStatLabel}>Proteína:</Text>
-                  <Text style={styles.workoutHeroStatValue}>{dietPlan?.totalProtein ?? 0}g</Text>
+                  <Text style={styles.workoutHeroStatValue}>{dietPlan.totalProtein}g</Text>
                 </View>
               </View>
             </TouchableOpacity>
 
-            {dietExpanded && (dietPlan?.meals ?? []).map((meal) => (
+            {dietExpanded && dietPlan.meals.map((meal) => (
               <View key={meal.id} style={styles.mealCard}>
                 <View style={styles.mealHeader}>
                   <Text style={styles.mealName}>{meal.name}</Text>
@@ -1245,79 +1221,6 @@ const styles = StyleSheet.create({
   planCardViewText: {
     fontSize: 16,
     fontWeight: '800' as const,
-    color: colors.background,
-  },
-
-  flashcardsContainer: {
-    backgroundColor: colors.card,
-    borderRadius: 24,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  flashcard: {
-    height: 180,
-    borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 2,
-    backgroundColor: colors.card,
-    shadowColor: colors.neon,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 18,
-    elevation: 10,
-  },
-  flashcardImage: {
-    width: '100%',
-    height: '100%',
-  },
-  flashcardOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(0,0,0,0.35)'
-  },
-  flashcardBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: colors.neon + '22',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.neon,
-  },
-  flashcardTextBlock: {
-    flex: 1,
-    paddingHorizontal: 12,
-  },
-  flashcardTitle: {
-    fontSize: 22,
-    fontWeight: '900' as const,
-    color: colors.white,
-    letterSpacing: 0.2,
-  },
-  flashcardSubtitle: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  flashcardCTA: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  flashcardCTAText: {
-    fontSize: 14,
-    fontWeight: '900' as const,
     color: colors.background,
   },
 });
