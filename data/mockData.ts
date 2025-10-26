@@ -27,359 +27,7 @@ export const mockTrainer: Trainer = {
 
 export const mockStudent: Student = mockStudents[0];
 
-const today = new Date();
-const getDateDaysAgo = (days: number) => {
-  const d = new Date(today);
-  d.setDate(d.getDate() - days);
-  return d.toISOString();
-};
-
 export const mockWorkoutPlans: WorkoutPlan[] = [
-  {
-    id: 'workout-week1',
-    studentId: 'student1',
-    name: 'Rutina de Fuerza - Semana 1',
-    daysOfWeek: [1, 3, 5],
-    createdAt: getDateDaysAgo(49),
-    exercises: [
-      {
-        id: 'ex1-w1',
-        name: 'Press Banca',
-        imageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 10, weight: 55, completed: true, actualReps: 10, actualWeight: 55 },
-          { set: 2, reps: 8, weight: 60, completed: true, actualReps: 8, actualWeight: 60 },
-          { set: 3, reps: 6, weight: 65, completed: true, actualReps: 6, actualWeight: 65 },
-        ],
-        notes: 'Mantén la espalda pegada al banco',
-      },
-      {
-        id: 'ex2-w1',
-        name: 'Sentadilla',
-        imageUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 12, weight: 70, completed: true, actualReps: 12, actualWeight: 70 },
-          { set: 2, reps: 10, weight: 75, completed: true, actualReps: 10, actualWeight: 75 },
-          { set: 3, reps: 8, weight: 80, completed: true, actualReps: 8, actualWeight: 80 },
-        ],
-        notes: 'Profundidad completa',
-      },
-      {
-        id: 'ex3-w1',
-        name: 'Peso Muerto',
-        imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 8, weight: 90, completed: true, actualReps: 8, actualWeight: 90 },
-          { set: 2, reps: 6, weight: 100, completed: true, actualReps: 6, actualWeight: 100 },
-          { set: 3, reps: 4, weight: 110, completed: true, actualReps: 4, actualWeight: 110 },
-        ],
-      },
-      {
-        id: 'ex4-w1',
-        name: 'Dominadas',
-        imageUrl: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 8, weight: 0, completed: true, actualReps: 8, actualWeight: 0 },
-          { set: 2, reps: 6, weight: 0, completed: true, actualReps: 6, actualWeight: 0 },
-          { set: 3, reps: 5, weight: 0, completed: true, actualReps: 5, actualWeight: 0 },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'workout-week2',
-    studentId: 'student1',
-    name: 'Rutina de Fuerza - Semana 2',
-    daysOfWeek: [1, 3, 5],
-    createdAt: getDateDaysAgo(42),
-    exercises: [
-      {
-        id: 'ex1-w2',
-        name: 'Press Banca',
-        imageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 10, weight: 57, completed: true, actualReps: 10, actualWeight: 57 },
-          { set: 2, reps: 8, weight: 62, completed: true, actualReps: 8, actualWeight: 62 },
-          { set: 3, reps: 6, weight: 67, completed: true, actualReps: 5, actualWeight: 67 },
-        ],
-      },
-      {
-        id: 'ex2-w2',
-        name: 'Sentadilla',
-        imageUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 12, weight: 72, completed: true, actualReps: 12, actualWeight: 72 },
-          { set: 2, reps: 10, weight: 77, completed: true, actualReps: 10, actualWeight: 77 },
-          { set: 3, reps: 8, weight: 82, completed: true, actualReps: 8, actualWeight: 82 },
-        ],
-      },
-      {
-        id: 'ex3-w2',
-        name: 'Peso Muerto',
-        imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 8, weight: 95, completed: true, actualReps: 8, actualWeight: 95 },
-          { set: 2, reps: 6, weight: 105, completed: true, actualReps: 6, actualWeight: 105 },
-          { set: 3, reps: 4, weight: 115, completed: true, actualReps: 4, actualWeight: 115 },
-        ],
-      },
-      {
-        id: 'ex4-w2',
-        name: 'Dominadas',
-        imageUrl: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 9, weight: 0, completed: true, actualReps: 9, actualWeight: 0 },
-          { set: 2, reps: 7, weight: 0, completed: true, actualReps: 7, actualWeight: 0 },
-          { set: 3, reps: 5, weight: 0, completed: true, actualReps: 5, actualWeight: 0 },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'workout-week3',
-    studentId: 'student1',
-    name: 'Rutina de Fuerza - Semana 3',
-    daysOfWeek: [1, 3, 5],
-    createdAt: getDateDaysAgo(35),
-    exercises: [
-      {
-        id: 'ex1-w3',
-        name: 'Press Banca',
-        imageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 10, weight: 58, completed: true, actualReps: 10, actualWeight: 58 },
-          { set: 2, reps: 8, weight: 63, completed: true, actualReps: 8, actualWeight: 63 },
-          { set: 3, reps: 6, weight: 68, completed: true, actualReps: 6, actualWeight: 68 },
-        ],
-      },
-      {
-        id: 'ex2-w3',
-        name: 'Sentadilla',
-        imageUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 12, weight: 75, completed: true, actualReps: 12, actualWeight: 75 },
-          { set: 2, reps: 10, weight: 80, completed: true, actualReps: 10, actualWeight: 80 },
-          { set: 3, reps: 8, weight: 85, completed: true, actualReps: 8, actualWeight: 85 },
-        ],
-      },
-      {
-        id: 'ex3-w3',
-        name: 'Peso Muerto',
-        imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 8, weight: 98, completed: true, actualReps: 8, actualWeight: 98 },
-          { set: 2, reps: 6, weight: 108, completed: true, actualReps: 6, actualWeight: 108 },
-          { set: 3, reps: 4, weight: 118, completed: true, actualReps: 4, actualWeight: 118 },
-        ],
-      },
-      {
-        id: 'ex4-w3',
-        name: 'Dominadas',
-        imageUrl: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 10, weight: 0, completed: true, actualReps: 10, actualWeight: 0 },
-          { set: 2, reps: 8, weight: 0, completed: true, actualReps: 8, actualWeight: 0 },
-          { set: 3, reps: 6, weight: 0, completed: true, actualReps: 6, actualWeight: 0 },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'workout-week4',
-    studentId: 'student1',
-    name: 'Rutina de Fuerza - Semana 4',
-    daysOfWeek: [1, 3, 5],
-    createdAt: getDateDaysAgo(28),
-    exercises: [
-      {
-        id: 'ex1-w4',
-        name: 'Press Banca',
-        imageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 10, weight: 60, completed: true, actualReps: 10, actualWeight: 60 },
-          { set: 2, reps: 8, weight: 65, completed: true, actualReps: 8, actualWeight: 65 },
-          { set: 3, reps: 6, weight: 70, completed: true, actualReps: 6, actualWeight: 70 },
-        ],
-      },
-      {
-        id: 'ex2-w4',
-        name: 'Sentadilla',
-        imageUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 12, weight: 78, completed: true, actualReps: 12, actualWeight: 78 },
-          { set: 2, reps: 10, weight: 83, completed: true, actualReps: 10, actualWeight: 83 },
-          { set: 3, reps: 8, weight: 88, completed: true, actualReps: 8, actualWeight: 88 },
-        ],
-      },
-      {
-        id: 'ex3-w4',
-        name: 'Peso Muerto',
-        imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 8, weight: 102, completed: true, actualReps: 8, actualWeight: 102 },
-          { set: 2, reps: 6, weight: 112, completed: true, actualReps: 6, actualWeight: 112 },
-          { set: 3, reps: 4, weight: 122, completed: true, actualReps: 4, actualWeight: 122 },
-        ],
-      },
-      {
-        id: 'ex4-w4',
-        name: 'Dominadas',
-        imageUrl: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 11, weight: 0, completed: true, actualReps: 11, actualWeight: 0 },
-          { set: 2, reps: 9, weight: 0, completed: true, actualReps: 9, actualWeight: 0 },
-          { set: 3, reps: 7, weight: 0, completed: true, actualReps: 7, actualWeight: 0 },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'workout-week5',
-    studentId: 'student1',
-    name: 'Rutina de Fuerza - Semana 5',
-    daysOfWeek: [1, 3, 5],
-    createdAt: getDateDaysAgo(21),
-    exercises: [
-      {
-        id: 'ex1-w5',
-        name: 'Press Banca',
-        imageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 10, weight: 62, completed: true, actualReps: 10, actualWeight: 62 },
-          { set: 2, reps: 8, weight: 67, completed: true, actualReps: 8, actualWeight: 67 },
-          { set: 3, reps: 6, weight: 72, completed: true, actualReps: 6, actualWeight: 72 },
-        ],
-      },
-      {
-        id: 'ex2-w5',
-        name: 'Sentadilla',
-        imageUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 12, weight: 80, completed: true, actualReps: 12, actualWeight: 80 },
-          { set: 2, reps: 10, weight: 85, completed: true, actualReps: 10, actualWeight: 85 },
-          { set: 3, reps: 8, weight: 90, completed: true, actualReps: 8, actualWeight: 90 },
-        ],
-      },
-      {
-        id: 'ex3-w5',
-        name: 'Peso Muerto',
-        imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 8, weight: 105, completed: true, actualReps: 8, actualWeight: 105 },
-          { set: 2, reps: 6, weight: 115, completed: true, actualReps: 6, actualWeight: 115 },
-          { set: 3, reps: 4, weight: 125, completed: true, actualReps: 4, actualWeight: 125 },
-        ],
-      },
-      {
-        id: 'ex4-w5',
-        name: 'Dominadas',
-        imageUrl: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 12, weight: 0, completed: true, actualReps: 12, actualWeight: 0 },
-          { set: 2, reps: 10, weight: 0, completed: true, actualReps: 10, actualWeight: 0 },
-          { set: 3, reps: 8, weight: 0, completed: true, actualReps: 8, actualWeight: 0 },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'workout-week6',
-    studentId: 'student1',
-    name: 'Rutina de Fuerza - Semana 6',
-    daysOfWeek: [1, 3, 5],
-    createdAt: getDateDaysAgo(14),
-    exercises: [
-      {
-        id: 'ex1-w6',
-        name: 'Press Banca',
-        imageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 10, weight: 63, completed: true, actualReps: 10, actualWeight: 63 },
-          { set: 2, reps: 8, weight: 68, completed: true, actualReps: 8, actualWeight: 68 },
-          { set: 3, reps: 6, weight: 73, completed: true, actualReps: 6, actualWeight: 73 },
-        ],
-      },
-      {
-        id: 'ex2-w6',
-        name: 'Sentadilla',
-        imageUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 12, weight: 82, completed: true, actualReps: 12, actualWeight: 82 },
-          { set: 2, reps: 10, weight: 87, completed: true, actualReps: 10, actualWeight: 87 },
-          { set: 3, reps: 8, weight: 92, completed: true, actualReps: 8, actualWeight: 92 },
-        ],
-      },
-      {
-        id: 'ex3-w6',
-        name: 'Peso Muerto',
-        imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 8, weight: 108, completed: true, actualReps: 8, actualWeight: 108 },
-          { set: 2, reps: 6, weight: 118, completed: true, actualReps: 6, actualWeight: 118 },
-          { set: 3, reps: 4, weight: 128, completed: true, actualReps: 4, actualWeight: 128 },
-        ],
-      },
-      {
-        id: 'ex4-w6',
-        name: 'Dominadas',
-        imageUrl: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 12, weight: 0, completed: true, actualReps: 12, actualWeight: 0 },
-          { set: 2, reps: 10, weight: 0, completed: true, actualReps: 10, actualWeight: 0 },
-          { set: 3, reps: 9, weight: 0, completed: true, actualReps: 9, actualWeight: 0 },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'workout-week7',
-    studentId: 'student1',
-    name: 'Rutina de Fuerza - Semana 7',
-    daysOfWeek: [1, 3, 5],
-    createdAt: getDateDaysAgo(7),
-    exercises: [
-      {
-        id: 'ex1-w7',
-        name: 'Press Banca',
-        imageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 10, weight: 65, completed: true, actualReps: 10, actualWeight: 65 },
-          { set: 2, reps: 8, weight: 70, completed: true, actualReps: 8, actualWeight: 70 },
-          { set: 3, reps: 6, weight: 75, completed: true, actualReps: 6, actualWeight: 75 },
-        ],
-      },
-      {
-        id: 'ex2-w7',
-        name: 'Sentadilla',
-        imageUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 12, weight: 85, completed: true, actualReps: 12, actualWeight: 85 },
-          { set: 2, reps: 10, weight: 90, completed: true, actualReps: 10, actualWeight: 90 },
-          { set: 3, reps: 8, weight: 95, completed: true, actualReps: 8, actualWeight: 95 },
-        ],
-      },
-      {
-        id: 'ex3-w7',
-        name: 'Peso Muerto',
-        imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 8, weight: 110, completed: true, actualReps: 8, actualWeight: 110 },
-          { set: 2, reps: 6, weight: 120, completed: true, actualReps: 6, actualWeight: 120 },
-          { set: 3, reps: 4, weight: 130, completed: true, actualReps: 4, actualWeight: 130 },
-        ],
-      },
-      {
-        id: 'ex4-w7',
-        name: 'Dominadas',
-        imageUrl: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=400&h=300&fit=crop',
-        sets: [
-          { set: 1, reps: 13, weight: 0, completed: true, actualReps: 13, actualWeight: 0 },
-          { set: 2, reps: 11, weight: 0, completed: true, actualReps: 11, actualWeight: 0 },
-          { set: 3, reps: 9, weight: 0, completed: true, actualReps: 9, actualWeight: 0 },
-        ],
-      },
-    ],
-  },
   {
     id: 'workout1',
     studentId: 'student1',
@@ -392,9 +40,9 @@ export const mockWorkoutPlans: WorkoutPlan[] = [
         name: 'Press Banca',
         imageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop',
         sets: [
-          { set: 1, reps: 10, weight: 67, completed: false },
-          { set: 2, reps: 8, weight: 72, completed: false },
-          { set: 3, reps: 6, weight: 77, completed: false },
+          { set: 1, reps: 10, weight: 60, completed: false },
+          { set: 2, reps: 8, weight: 65, completed: false },
+          { set: 3, reps: 6, weight: 70, completed: false },
         ],
         notes: 'Mantén la espalda pegada al banco',
       },
@@ -403,9 +51,9 @@ export const mockWorkoutPlans: WorkoutPlan[] = [
         name: 'Sentadilla',
         imageUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=400&h=300&fit=crop',
         sets: [
-          { set: 1, reps: 12, weight: 87, completed: false },
-          { set: 2, reps: 10, weight: 92, completed: false },
-          { set: 3, reps: 8, weight: 97, completed: false },
+          { set: 1, reps: 12, weight: 80, completed: false },
+          { set: 2, reps: 10, weight: 85, completed: false },
+          { set: 3, reps: 8, weight: 90, completed: false },
         ],
         notes: 'Profundidad completa',
       },
@@ -414,9 +62,9 @@ export const mockWorkoutPlans: WorkoutPlan[] = [
         name: 'Peso Muerto',
         imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=300&fit=crop',
         sets: [
-          { set: 1, reps: 8, weight: 112, completed: false },
-          { set: 2, reps: 6, weight: 122, completed: false },
-          { set: 3, reps: 4, weight: 132, completed: false },
+          { set: 1, reps: 8, weight: 100, completed: false },
+          { set: 2, reps: 6, weight: 110, completed: false },
+          { set: 3, reps: 4, weight: 120, completed: false },
         ],
       },
       {
@@ -424,9 +72,9 @@ export const mockWorkoutPlans: WorkoutPlan[] = [
         name: 'Dominadas',
         imageUrl: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=400&h=300&fit=crop',
         sets: [
-          { set: 1, reps: 14, weight: 0, completed: false },
-          { set: 2, reps: 12, weight: 0, completed: false },
-          { set: 3, reps: 10, weight: 0, completed: false },
+          { set: 1, reps: 10, weight: 0, completed: false },
+          { set: 2, reps: 8, weight: 0, completed: false },
+          { set: 3, reps: 6, weight: 0, completed: false },
         ],
       },
     ],
@@ -620,115 +268,11 @@ export const mockDietPlans: DietPlan[] = [
 
 export const mockProgress: DailyProgress[] = [
   {
-    date: getDateDaysAgo(49).split('T')[0],
-    studentId: 'student1',
-    workoutCompleted: true,
-    mealsCompleted: 5,
-    totalMeals: 5,
-    weight: 82,
-  },
-  {
-    date: getDateDaysAgo(42).split('T')[0],
-    studentId: 'student1',
-    workoutCompleted: true,
-    mealsCompleted: 5,
-    totalMeals: 5,
-    weight: 80,
-  },
-  {
-    date: getDateDaysAgo(35).split('T')[0],
-    studentId: 'student1',
-    workoutCompleted: true,
-    mealsCompleted: 5,
-    totalMeals: 5,
-    weight: 78,
-  },
-  {
-    date: getDateDaysAgo(28).split('T')[0],
-    studentId: 'student1',
-    workoutCompleted: true,
-    mealsCompleted: 4,
-    totalMeals: 5,
-    weight: 79,
-  },
-  {
-    date: getDateDaysAgo(21).split('T')[0],
-    studentId: 'student1',
-    workoutCompleted: true,
-    mealsCompleted: 5,
-    totalMeals: 5,
-    weight: 77,
-  },
-  {
-    date: getDateDaysAgo(14).split('T')[0],
-    studentId: 'student1',
-    workoutCompleted: true,
-    mealsCompleted: 5,
-    totalMeals: 5,
-    weight: 76,
-  },
-  {
-    date: getDateDaysAgo(7).split('T')[0],
-    studentId: 'student1',
-    workoutCompleted: true,
-    mealsCompleted: 5,
-    totalMeals: 5,
-    weight: 75,
-  },
-  {
-    date: getDateDaysAgo(6).split('T')[0],
-    studentId: 'student1',
-    workoutCompleted: true,
-    mealsCompleted: 5,
-    totalMeals: 5,
-    weight: 75,
-  },
-  {
-    date: getDateDaysAgo(5).split('T')[0],
-    studentId: 'student1',
-    workoutCompleted: true,
-    mealsCompleted: 4,
-    totalMeals: 5,
-    weight: 74.5,
-  },
-  {
-    date: getDateDaysAgo(4).split('T')[0],
-    studentId: 'student1',
-    workoutCompleted: true,
-    mealsCompleted: 5,
-    totalMeals: 5,
-    weight: 74,
-  },
-  {
-    date: getDateDaysAgo(3).split('T')[0],
-    studentId: 'student1',
-    workoutCompleted: true,
-    mealsCompleted: 5,
-    totalMeals: 5,
-    weight: 73.5,
-  },
-  {
-    date: getDateDaysAgo(2).split('T')[0],
-    studentId: 'student1',
-    workoutCompleted: true,
-    mealsCompleted: 5,
-    totalMeals: 5,
-    weight: 73,
-  },
-  {
-    date: getDateDaysAgo(1).split('T')[0],
-    studentId: 'student1',
-    workoutCompleted: true,
-    mealsCompleted: 4,
-    totalMeals: 5,
-    weight: 73,
-  },
-  {
     date: new Date().toISOString().split('T')[0],
     studentId: 'student1',
     workoutCompleted: false,
     mealsCompleted: 0,
     totalMeals: 5,
-    weight: 73,
+    weight: 78,
   },
 ];
