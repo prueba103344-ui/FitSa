@@ -15,6 +15,8 @@ export interface Trainer extends User {
 export interface Student extends User {
   role: 'student';
   trainerId: string;
+  loginUsername?: string;
+  loginPassword?: string;
   weight?: number;
   height?: number;
   age?: number;

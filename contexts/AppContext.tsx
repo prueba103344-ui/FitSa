@@ -189,6 +189,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
       role: 'student',
       trainerId: currentUser.id,
       avatar: undefined,
+      loginUsername: data.username.toLowerCase(),
+      loginPassword: data.password,
     };
     
     const updated = [...students, student];

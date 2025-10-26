@@ -475,6 +475,24 @@ export default function StudentProfileScreen() {
         {student.email && <Text style={styles.profileDetail}>{student.email}</Text>}
       </View>
 
+      <View style={styles.credentialsCard} testID="student-credentials">
+        <Text style={styles.credentialsTitle}>Credenciales de acceso</Text>
+        {student.loginUsername || student.loginPassword ? (
+          <View style={styles.credentialsRowWrap}>
+            <View style={styles.credentialRow}>
+              <Text style={styles.credentialLabel}>Usuario</Text>
+              <Text style={styles.credentialValue}>{student.loginUsername ?? '—'}</Text>
+            </View>
+            <View style={styles.credentialRow}>
+              <Text style={styles.credentialLabel}>Contraseña</Text>
+              <Text style={styles.credentialValue}>{student.loginPassword ?? '—'}</Text>
+            </View>
+          </View>
+        ) : (
+          <Text style={styles.credentialsHint}>No hay credenciales guardadas para este alumno.</Text>
+        )}
+      </View>
+
       <View style={styles.tabs}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'progress' && styles.tabActive]}
@@ -1117,6 +1135,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 24,
     paddingHorizontal: 20,
+  },
+  credentialsCard: {
+    marginHorizontal: 20,
+    marginBottom: 8,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  credentialsTitle: {
+    fontSize: 16,
+    fontWeight: '800' as const,
+    color: colors.white,
+    marginBottom: 8,
+  },
+  credentialsRowWrap: {
+    gap: 8,
+  },
+  credentialRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.cardLight,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  credentialLabel: {
+    color: colors.textSecondary,
+    fontWeight: '700' as const,
+    fontSize: 14,
+  },
+  credentialValue: {
+    color: colors.white,
+    fontWeight: '800' as const,
+    fontSize: 14,
+  },
+  credentialsHint: {
+    color: colors.textSecondary,
+    fontSize: 13,
   },
   profileAvatar: {
     width: 100,
