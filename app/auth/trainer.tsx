@@ -17,19 +17,23 @@ export default function TrainerAuthScreen() {
 
   const onSubmit = async () => {
     if (!username || !password || (mode === 'register' && !name)) {
-      Alert.alert('Completa los campos');
+      Alert.alert('Error', 'Por favor completa todos los campos');
       return;
     }
     setLoading(true);
     try {
+      console.log('[TrainerAuth] Attempting', mode, 'for username:', username);
       if (mode === 'login') {
         await login(username, password);
       } else {
         await registerTrainer(username, password, name);
       }
+      console.log('[TrainerAuth] Success! Redirecting to /trainer');
       router.replace('/trainer' as any);
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudo completar la acción');
+      console.error('[TrainerAuth] Error:', e);
+      const message = e?.message || e?.toString() || 'No se pudo completar la acción';
+      Alert.alert('Error', message);
     } finally {
       setLoading(false);
     }
@@ -84,8 +88,16 @@ export default function TrainerAuthScreen() {
         testID="trainer-password"
       />
 
-      <TouchableOpacity style={[styles.primaryBtn, loading && { opacity: 0.7 }]} onPress={onSubmit} disabled={loading} testID="trainer-submit">
-        <Text style={styles.primaryText}>{mode === 'login' ? 'Entrar' : 'Crear cuenta'}</Text>
+      <TouchableOpacity 
+        style={[styles.primaryBtn, loading && { opacity: 0.5 }]} 
+        onPress={onSubmit} 
+        disabled={loading} 
+        testID="trainer-submit"
+        activeOpacity={0.8}
+      >
+        <Text style={styles.primaryText}>
+          {loading ? 'Cargando...' : mode === 'login' ? 'Entrar' : 'Crear cuenta'}
+        </Text>
       </TouchableOpacity>
     </View>
   );

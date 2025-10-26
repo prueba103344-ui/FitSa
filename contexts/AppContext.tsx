@@ -49,29 +49,43 @@ export const [AppProvider, useApp] = createContextHook(() => {
   }, [loadData]);
 
   const registerTrainer = useCallback(async (username: string, password: string, name: string) => {
-    const res = await trpcClient.auth.signupTrainer.mutate({ username, password, name });
-    const trainer: Trainer = { id: res.user.id, name: res.user.name, role: 'trainer', clients: [], avatar: res.user.avatar };
-    await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(trainer));
-    setCurrentUser(trainer);
-    const trainerStudents = await trpcClient.students.listByTrainer.query({ trainerId: trainer.id }).catch(() => []);
-    setStudents(trainerStudents);
+    try {
+      console.log('[AppContext] Registering trainer:', username);
+      const res = await trpcClient.auth.signupTrainer.mutate({ username, password, name });
+      console.log('[AppContext] Registration successful:', res);
+      const trainer: Trainer = { id: res.user.id, name: res.user.name, role: 'trainer', clients: [], avatar: res.user.avatar };
+      await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(trainer));
+      setCurrentUser(trainer);
+      const trainerStudents = await trpcClient.students.listByTrainer.query({ trainerId: trainer.id }).catch(() => []);
+      setStudents(trainerStudents);
+    } catch (error) {
+      console.error('[AppContext] Registration error:', error);
+      throw error;
+    }
   }, [getKey]);
 
   const login = useCallback(async (username: string, password: string) => {
-    const res = await trpcClient.auth.login.mutate({ username, password });
-    const u = res.user as User;
-    await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(u));
-    setCurrentUser(u);
-    if (u.role === 'trainer') {
-      const trainerStudents = await trpcClient.students.listByTrainer.query({ trainerId: u.id }).catch(() => []);
-      setStudents(trainerStudents);
-    } else {
-      const [remoteWorkouts, remoteDiets] = await Promise.all([
-        trpcClient.workouts.listByStudent.query({ studentId: u.id }).catch(() => []),
-        trpcClient.diets.listByStudent.query({ studentId: u.id }).catch(() => []),
-      ]);
-      setWorkoutPlans(remoteWorkouts);
-      setDietPlans(remoteDiets);
+    try {
+      console.log('[AppContext] Logging in:', username);
+      const res = await trpcClient.auth.login.mutate({ username, password });
+      console.log('[AppContext] Login successful:', res);
+      const u = res.user as User;
+      await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(u));
+      setCurrentUser(u);
+      if (u.role === 'trainer') {
+        const trainerStudents = await trpcClient.students.listByTrainer.query({ trainerId: u.id }).catch(() => []);
+        setStudents(trainerStudents);
+      } else {
+        const [remoteWorkouts, remoteDiets] = await Promise.all([
+          trpcClient.workouts.listByStudent.query({ studentId: u.id }).catch(() => []),
+          trpcClient.diets.listByStudent.query({ studentId: u.id }).catch(() => []),
+        ]);
+        setWorkoutPlans(remoteWorkouts);
+        setDietPlans(remoteDiets);
+      }
+    } catch (error) {
+      console.error('[AppContext] Login error:', error);
+      throw error;
     }
   }, [getKey]);
 

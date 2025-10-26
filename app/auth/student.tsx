@@ -15,15 +15,19 @@ export default function StudentAuthScreen() {
 
   const onSubmit = async () => {
     if (!username || !password) {
-      Alert.alert('Completa los campos');
+      Alert.alert('Error', 'Por favor completa todos los campos');
       return;
     }
     setLoading(true);
     try {
+      console.log('[StudentAuth] Attempting login for username:', username);
       await login(username, password);
+      console.log('[StudentAuth] Success! Redirecting to /student');
       router.replace('/student' as any);
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudo iniciar sesión');
+      console.error('[StudentAuth] Error:', e);
+      const message = e?.message || e?.toString() || 'No se pudo iniciar sesión';
+      Alert.alert('Error', message);
     } finally {
       setLoading(false);
     }
@@ -55,8 +59,16 @@ export default function StudentAuthScreen() {
         testID="student-password"
       />
 
-      <TouchableOpacity style={[styles.primaryBtn, loading && { opacity: 0.7 }]} onPress={onSubmit} disabled={loading} testID="student-submit">
-        <Text style={styles.primaryText}>Entrar</Text>
+      <TouchableOpacity 
+        style={[styles.primaryBtn, loading && { opacity: 0.5 }]} 
+        onPress={onSubmit} 
+        disabled={loading} 
+        testID="student-submit"
+        activeOpacity={0.8}
+      >
+        <Text style={styles.primaryText}>
+          {loading ? 'Cargando...' : 'Entrar'}
+        </Text>
       </TouchableOpacity>
     </View>
   );
