@@ -1,32 +1,28 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useApp } from '@/contexts/AppContext';
+
 import colors from '@/constants/colors';
-import { Dumbbell, User, Shield } from 'lucide-react-native';
+import { Dumbbell, User } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
 
 export default function LandingScreen() {
   const router = useRouter();
-  const { loginAsTrainer, loginAsStudent } = useApp();
+
   const insets = useSafeAreaInsets();
 
-  const handleTrainerPress = async () => {
-    await loginAsTrainer();
-    router.replace('/trainer/' as any);
+  const handleTrainerPress = () => {
+    router.push('/auth/trainer' as any);
   };
 
-  const handleStudentPress = async () => {
-    await loginAsStudent();
-    router.replace('/student/' as any);
+  const handleStudentPress = () => {
+    router.push('/auth/student' as any);
   };
 
-  const handleDemoPress = () => {
-    router.push('/demo' as any);
-  };
+
 
   return (
     <View style={styles.container}>
@@ -83,26 +79,11 @@ export default function LandingScreen() {
                 </LinearGradient>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.button, styles.demoButton]}
-                onPress={handleDemoPress}
-                activeOpacity={0.9}
-                testID="demo-mode"
-              >
-                <LinearGradient
-                  colors={[colors.cardLight, colors.card]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.buttonGradient}
-                >
-                  <Shield size={28} color={colors.neon} strokeWidth={2.5} />
-                  <Text style={[styles.buttonText]}>Modo demo (entrenador)</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+
             </View>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>El modo demo es seguro, aislado y temporal</Text>
+              <Text style={styles.footerText}>Inicia sesión o regístrate para continuar</Text>
             </View>
           </View>
         </LinearGradient>
@@ -176,9 +157,7 @@ const styles = StyleSheet.create({
   studentButton: {
     shadowColor: colors.neon,
   },
-  demoButton: {
-    shadowColor: colors.border,
-  },
+
   buttonGradient: {
     flexDirection: 'row',
     alignItems: 'center',

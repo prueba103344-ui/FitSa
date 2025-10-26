@@ -23,6 +23,10 @@ export default createTRPCRouter({
     const db = await readDB();
     return db.students;
   }),
+  listByTrainer: publicProcedure.input(z.object({ trainerId: z.string() })).query(async ({ input }) => {
+    const db = await readDB();
+    return db.students.filter(s => s.trainerId === input.trainerId);
+  }),
   upsert: publicProcedure.input(studentInput).mutation(async ({ input }) => {
     const db = await readDB();
     const idx = db.students.findIndex(s => s.id === input.id);

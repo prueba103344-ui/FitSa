@@ -20,7 +20,7 @@ import { Trainer, Student } from '@/types';
 export default function StudentsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { currentUser, students, isLoading, addStudent, deleteStudent } = useApp();
+  const { currentUser, students, isLoading, deleteStudent, createStudentAccount } = useApp();
   const trainer = currentUser?.role === 'trainer' ? (currentUser as Trainer) : null;
   const clients = useMemo<Student[]>(() => {
     if (trainer?.clients && Array.isArray(trainer.clients)) return trainer.clients;
@@ -35,10 +35,12 @@ export default function StudentsScreen() {
   const [studentPhone, setStudentPhone] = useState<string>('');
   const [studentGoal, setStudentGoal] = useState<string>('');
   const [studentMedicalNotes, setStudentMedicalNotes] = useState<string>('');
+  const [studentUsername, setStudentUsername] = useState<string>('');
+  const [studentPassword, setStudentPassword] = useState<string>('');
 
   const handleAddStudent = async () => {
-    if (!studentName.trim()) {
-      Alert.alert('Error', 'Introduce el nombre del alumno');
+    if (!studentName.trim() || !studentUsername.trim() || !studentPassword.trim()) {
+      Alert.alert('Error', 'Nombre, usuario y contraseña son obligatorios');
       return;
     }
 
@@ -47,25 +49,14 @@ export default function StudentsScreen() {
       return;
     }
 
-    const newStudent: Student = {
-      id: `student${Date.now()}`,
-      name: studentName,
-      role: 'student',
-      trainerId: trainer.id,
-      weight: studentWeight ? parseInt(studentWeight) : undefined,
-      height: studentHeight ? parseInt(studentHeight) : undefined,
-      age: studentAge ? parseInt(studentAge) : undefined,
-      email: studentEmail || undefined,
-      phone: studentPhone || undefined,
-      goal: studentGoal || undefined,
-      medicalNotes: studentMedicalNotes || undefined,
-      avatar: `https://images.unsplash.com/photo-${1500000000000 + Math.floor(Math.random() * 100000000000)}?w=400&h=400&fit=crop`,
-    };
-
-    await addStudent(newStudent);
-    setModalVisible(false);
-    resetForm();
-    Alert.alert('Éxito', 'Alumno añadido correctamente');
+    try {
+      await createStudentAccount({ username: studentUsername.trim().toLowerCase(), password: studentPassword, name: studentName.trim() });
+      setModalVisible(false);
+      resetForm();
+      Alert.alert('Éxito', 'Alumno creado y credenciales generadas');
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'No se pudo crear el alumno');
+    }
   };
 
   const resetForm = () => {
@@ -77,6 +68,8 @@ export default function StudentsScreen() {
     setStudentPhone('');
     setStudentGoal('');
     setStudentMedicalNotes('');
+    setStudentUsername('');
+    setStudentPassword('');
   };
 
   const handleDeleteStudent = async (studentId: string) => {
@@ -199,6 +192,25 @@ export default function StudentsScreen() {
                 value={studentName}
                 onChangeText={setStudentName}
                 placeholder="Nombre del alumno"
+                placeholderTextColor={colors.textSecondary}
+              />
+              <Text style={styles.label}>Usuario (login) *</Text>
+              <TextInput
+                style={styles.input}
+                value={studentUsername}
+                onChangeText={setStudentUsername}
+                placeholder="usuario"
+                autoCapitalize="none"
+                placeholderTextColor={colors.textSecondary}
+              />
+
+              <Text style={styles.label}>Contraseña *</Text>
+              <TextInput
+                style={styles.input}
+                value={studentPassword}
+                onChangeText={setStudentPassword}
+                placeholder="••••••••"
+                secureTextEntry
                 placeholderTextColor={colors.textSecondary}
               />
 
