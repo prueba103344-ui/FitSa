@@ -3,6 +3,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { StyleSheet } from 'react-native';
 import { AppProvider } from '@/contexts/AppContext';
 import { trpc, trpcClient } from '@/lib/trpc';
 
@@ -30,14 +31,18 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <AppProvider>
-          <GestureHandlerRootView>
+          <GestureHandlerRootView style={styles.flex}>
             <RootLayoutNav />
           </GestureHandlerRootView>
         </AppProvider>
-      </QueryClientProvider>
-    </trpc.Provider>
+      </trpc.Provider>
+    </QueryClientProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+});
