@@ -473,9 +473,9 @@ export default function StudentProfileScreen() {
         {student.email && <Text style={styles.profileDetail}>{student.email}</Text>}
       </View>
 
-      <View style={styles.credentialsCard} testID="student-credentials">
-        <Text style={styles.credentialsTitle}>Credenciales de acceso</Text>
-        {student.loginUsername || student.loginPassword ? (
+      {(student.loginUsername || student.loginPassword) && (
+        <View style={styles.credentialsCard} testID="student-credentials">
+          <Text style={styles.credentialsTitle}>Credenciales de acceso</Text>
           <View style={styles.credentialsRowWrap}>
             <View style={styles.credentialRow}>
               <Text style={styles.credentialLabel}>Usuario</Text>
@@ -486,10 +486,8 @@ export default function StudentProfileScreen() {
               <Text style={styles.credentialValue}>{student.loginPassword ?? '—'}</Text>
             </View>
           </View>
-        ) : (
-          <Text style={styles.credentialsHint}>No hay credenciales guardadas para este alumno.</Text>
-        )}
-      </View>
+        </View>
+      )}
 
       <View style={styles.tabs}>
         <TouchableOpacity

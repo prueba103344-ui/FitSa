@@ -11,15 +11,17 @@ type Props = {
 };
 
 export default function Avatar({ uri, name, size, borderColor, testID }: Props) {
+  const safeName = name ?? 'User';
+  
   const initials = useMemo(() => {
-    const parts = (name ?? '').split(' ').filter(Boolean);
+    const parts = safeName.split(' ').filter(Boolean);
     const first = parts[0]?.[0] ?? '';
     const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? '' : '';
     return (first + last).toUpperCase() || 'U';
-  }, [name]);
+  }, [safeName]);
 
   const bg = useMemo(() => {
-    const s = (name || 'user').toLowerCase();
+    const s = safeName.toLowerCase();
     let hash = 0;
     for (let i = 0; i < s.length; i++) hash = (hash << 5) - hash + s.charCodeAt(i);
     const palette = [
@@ -33,7 +35,7 @@ export default function Avatar({ uri, name, size, borderColor, testID }: Props) 
     ] as const;
     const idx = Math.abs(hash) % palette.length;
     return palette[idx];
-  }, [name]);
+  }, [safeName]);
 
   const style = useMemo(() => [
     styles.base,
