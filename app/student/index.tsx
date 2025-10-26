@@ -365,9 +365,9 @@ export default function StudentDashboard() {
               onPress={() => router.push('/student/training')}
               activeOpacity={0.8}
             >
-              {workoutPlan.exercises.length > 0 && workoutPlan.exercises[0].imageUrl && (
+              {(workoutPlan?.exercises?.length ?? 0) > 0 && workoutPlan?.exercises?.[0]?.imageUrl && (
                 <Image
-                  source={{ uri: workoutPlan.exercises[0].imageUrl }}
+                  source={{ uri: workoutPlan?.exercises?.[0]?.imageUrl as string }}
                   style={styles.planCardImage}
                 />
               )}
@@ -376,11 +376,11 @@ export default function StudentDashboard() {
                   <View style={styles.planIconBadge}>
                     <Dumbbell size={24} color={colors.neon} strokeWidth={2.5} />
                   </View>
-                  <Text style={styles.planCardTitle}>{workoutPlan.name || 'Entrenamiento'}</Text>
+                  <Text style={styles.planCardTitle}>{workoutPlan?.name ?? 'Entrenamiento'}</Text>
                 </View>
                 <View style={styles.planCardStats}>
                   <View style={styles.planCardStat}>
-                    <Text style={styles.planCardStatValue}>{workoutPlan.exercises.length}</Text>
+                    <Text style={styles.planCardStatValue}>{workoutPlan?.exercises?.length ?? 0}</Text>
                     <Text style={styles.planCardStatLabel}>Ejercicios</Text>
                   </View>
                   <View style={styles.planCardStat}>
@@ -415,12 +415,12 @@ export default function StudentDashboard() {
               </View>
               <View style={styles.workoutHeroStats}>
                 <View style={styles.workoutHeroStat}>
-                  <Text style={styles.workoutHeroStatValue}>{workoutPlan.exercises.length}</Text>
+                  <Text style={styles.workoutHeroStatValue}>{workoutPlan?.exercises?.length ?? 0}</Text>
                   <Text style={styles.workoutHeroStatLabel}>Ejercicios</Text>
                 </View>
                 <View style={styles.workoutHeroStatDivider} />
                 <View style={styles.workoutHeroStat}>
-                  <Text style={styles.workoutHeroStatValue}>{workoutPlan.exercises.reduce((acc, ex) => acc + ex.sets.length, 0)}</Text>
+                  <Text style={styles.workoutHeroStatValue}>{(workoutPlan?.exercises ?? []).reduce((acc, ex) => acc + ex.sets.length, 0)}</Text>
                   <Text style={styles.workoutHeroStatLabel}>Series</Text>
                 </View>
                 <View style={styles.workoutHeroStatDivider} />
@@ -431,7 +431,7 @@ export default function StudentDashboard() {
               </View>
             </TouchableOpacity>
 
-            {workoutExpanded && workoutPlan.exercises.map((exercise) => (
+            {workoutExpanded && (workoutPlan?.exercises ?? []).map((exercise) => (
               <View key={exercise.id} style={styles.exerciseCard}>
                 {exercise.imageUrl && (
                   <Image
@@ -508,9 +508,9 @@ export default function StudentDashboard() {
               onPress={() => router.push('/student/meals')}
               activeOpacity={0.8}
             >
-              {dietPlan.meals.length > 0 && dietPlan.meals[0].imageUrl && (
+              {(dietPlan?.meals?.length ?? 0) > 0 && dietPlan?.meals?.[0]?.imageUrl && (
                 <Image
-                  source={{ uri: dietPlan.meals[0].imageUrl }}
+                  source={{ uri: dietPlan?.meals?.[0]?.imageUrl as string }}
                   style={styles.planCardImage}
                 />
               )}
@@ -523,7 +523,7 @@ export default function StudentDashboard() {
                 </View>
                 <View style={styles.planCardStats}>
                   <View style={styles.planCardStat}>
-                    <Text style={styles.planCardStatValue}>{dietPlan.meals.length}</Text>
+                    <Text style={styles.planCardStatValue}>{dietPlan?.meals?.length ?? 0}</Text>
                     <Text style={styles.planCardStatLabel}>Comidas</Text>
                   </View>
                   <View style={styles.planCardStat}>
@@ -554,20 +554,20 @@ export default function StudentDashboard() {
               <View style={styles.workoutHeroStats}>
                 <View style={styles.workoutHeroStat}>
                   <Text style={styles.workoutHeroStatLabel}>Comidas:</Text>
-                  <Text style={styles.workoutHeroStatValue}>{dietPlan.meals.length}</Text>
+                  <Text style={styles.workoutHeroStatValue}>{dietPlan?.meals?.length ?? 0}</Text>
                 </View>
                 <View style={styles.workoutHeroStat}>
                   <Text style={styles.workoutHeroStatLabel}>Calorías:</Text>
-                  <Text style={styles.workoutHeroStatValue}>{dietPlan.totalCalories}</Text>
+                  <Text style={styles.workoutHeroStatValue}>{dietPlan?.totalCalories ?? 0}</Text>
                 </View>
                 <View style={styles.workoutHeroStat}>
                   <Text style={styles.workoutHeroStatLabel}>Proteína:</Text>
-                  <Text style={styles.workoutHeroStatValue}>{dietPlan.totalProtein}g</Text>
+                  <Text style={styles.workoutHeroStatValue}>{dietPlan?.totalProtein ?? 0}g</Text>
                 </View>
               </View>
             </TouchableOpacity>
 
-            {dietExpanded && dietPlan.meals.map((meal) => (
+            {dietExpanded && (dietPlan?.meals ?? []).map((meal) => (
               <View key={meal.id} style={styles.mealCard}>
                 <View style={styles.mealHeader}>
                   <Text style={styles.mealName}>{meal.name}</Text>
