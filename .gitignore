@@ -35,7 +35,3 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 .vercel
-
-# database
-data.json
-.env

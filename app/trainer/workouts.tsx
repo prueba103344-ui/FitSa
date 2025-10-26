@@ -7,7 +7,6 @@ import { useApp } from '@/contexts/AppContext';
 import { WorkoutPlan, Exercise, ExerciseSet, Trainer } from '@/types';
 import { Edit2 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import AnimatedSaveButton from '@/components/AnimatedSaveButton';
 
 export default function TrainerWorkoutsScreen() {
   const { currentUser, workoutPlans, students, addWorkoutPlan, updateWorkoutPlan, deleteWorkoutPlan } = useApp();
@@ -22,7 +21,6 @@ export default function TrainerWorkoutsScreen() {
   const [currentSets, setCurrentSets] = useState<ExerciseSet[]>([]);
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
   const [editingPlan, setEditingPlan] = useState<WorkoutPlan | null>(null);
-  const [editingExerciseIndex, setEditingExerciseIndex] = useState<number | null>(null);
 
   const trainer = currentUser as Trainer;
   const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -77,15 +75,7 @@ export default function TrainerWorkoutsScreen() {
       imageUrl: currentExerciseImage || undefined,
     };
 
-    if (editingExerciseIndex !== null) {
-      const updatedExercises = [...exercises];
-      updatedExercises[editingExerciseIndex] = newExercise;
-      setExercises(updatedExercises);
-      setEditingExerciseIndex(null);
-    } else {
-      setExercises([...exercises, newExercise]);
-    }
-    
+    setExercises([...exercises, newExercise]);
     setCurrentExercise('');
     setCurrentSets([]);
     setCurrentExerciseImage('');
@@ -131,7 +121,6 @@ export default function TrainerWorkoutsScreen() {
     setCurrentSets([]);
     setCurrentExerciseImage('');
     setEditingPlan(null);
-    setEditingExerciseIndex(null);
   };
 
   const handleEditPlan = (plan: WorkoutPlan) => {
@@ -188,16 +177,7 @@ export default function TrainerWorkoutsScreen() {
                 <TouchableOpacity onPress={() => handleEditPlan(plan)} style={styles.actionButton}>
                   <Edit2 color={colors.primary} size={20} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => {
-                  Alert.alert(
-                    'Confirmar eliminación',
-                    '¿Estás seguro de que quieres eliminar este plan de entrenamiento?',
-                    [
-                      { text: 'Cancelar', style: 'cancel' },
-                      { text: 'Eliminar', style: 'destructive', onPress: () => deleteWorkoutPlan(plan.id) }
-                    ]
-                  );
-                }} style={styles.actionButton}>
+                <TouchableOpacity onPress={() => deleteWorkoutPlan(plan.id)} style={styles.actionButton}>
                   <Trash2 color={colors.error} size={20} />
                 </TouchableOpacity>
               </View>
@@ -309,18 +289,8 @@ export default function TrainerWorkoutsScreen() {
               <Text style={styles.label}>Ejercicios</Text>
               {exercises.map((ex, idx) => (
                 <View key={ex.id} style={styles.addedExercise}>
-                  <TouchableOpacity 
-                    style={styles.addedExerciseContent}
-                    onPress={() => {
-                      setCurrentExercise(ex.name);
-                      setCurrentSets(ex.sets);
-                      setCurrentExerciseImage(ex.imageUrl || '');
-                      setEditingExerciseIndex(idx);
-                    }}
-                  >
-                    <Text style={styles.addedExerciseName}>{ex.name}</Text>
-                    <Text style={styles.addedExerciseSets}>{ex.sets.length} series</Text>
-                  </TouchableOpacity>
+                  <Text style={styles.addedExerciseName}>{ex.name}</Text>
+                  <Text style={styles.addedExerciseSets}>{ex.sets.length} series</Text>
                   <TouchableOpacity onPress={() => setExercises(exercises.filter((_, i) => i !== idx))}>
                     <Trash2 color={colors.error} size={18} />
                   </TouchableOpacity>
@@ -374,29 +344,13 @@ export default function TrainerWorkoutsScreen() {
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.addExerciseButton} onPress={handleAddExercise}>
-                  <Text style={styles.addExerciseText}>{editingExerciseIndex !== null ? 'Guardar Cambios' : 'Añadir Ejercicio'}</Text>
+                  <Text style={styles.addExerciseText}>Añadir Ejercicio</Text>
                 </TouchableOpacity>
-                {editingExerciseIndex !== null && (
-                  <TouchableOpacity 
-                    style={styles.cancelEditButton} 
-                    onPress={() => {
-                      setCurrentExercise('');
-                      setCurrentSets([]);
-                      setCurrentExerciseImage('');
-                      setEditingExerciseIndex(null);
-                    }}
-                  >
-                    <Text style={styles.cancelEditText}>Cancelar Edición</Text>
-                  </TouchableOpacity>
-                )}
               </View>
 
-              <AnimatedSaveButton 
-                onPress={handleSavePlan}
-                title="Guardar Plan"
-                style={styles.saveButton}
-                textStyle={styles.saveButtonText}
-              />
+              <TouchableOpacity style={styles.saveButton} onPress={handleSavePlan}>
+                <Text style={styles.saveButtonText}>Guardar Plan</Text>
+              </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
@@ -588,11 +542,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 8,
   },
-  addedExerciseContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   addedExerciseName: {
     flex: 1,
     fontSize: 14,
@@ -646,18 +595,6 @@ const styles = StyleSheet.create({
   addExerciseText: {
     fontSize: 14,
     color: colors.primary,
-    fontWeight: '700' as const,
-  },
-  cancelEditButton: {
-    backgroundColor: colors.cardLight,
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  cancelEditText: {
-    fontSize: 14,
-    color: colors.textSecondary,
     fontWeight: '700' as const,
   },
   saveButton: {

@@ -4,7 +4,7 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider } from '@/contexts/AppContext';
-import { trpc, trpcReactClient } from '@/lib/trpc';
+import { trpc, trpcClient } from '@/lib/trpc';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -27,14 +27,14 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <trpc.Provider client={trpcReactClient} queryClient={queryClient}>
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
         <AppProvider>
-          <GestureHandlerRootView style={{ flex: 1 }}>
+          <GestureHandlerRootView>
             <RootLayoutNav />
           </GestureHandlerRootView>
         </AppProvider>
-      </trpc.Provider>
-    </QueryClientProvider>
+      </QueryClientProvider>
+    </trpc.Provider>
   );
 }

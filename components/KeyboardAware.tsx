@@ -1,14 +1,16 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, ViewProps } from 'react-native';
+import { KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, ViewProps } from 'react-native';
 
 export default function KeyboardAware({ children, style }: React.PropsWithChildren<{ style?: ViewProps['style'] }>) {
   return (
     <KeyboardAvoidingView
-      style={[{ flex: 1 }, style]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
+      style={style}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
-      {children}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        {children as any}
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }

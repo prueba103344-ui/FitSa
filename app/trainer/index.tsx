@@ -61,12 +61,9 @@ export default function TrainerDashboard() {
               <Text style={styles.userName}>{trainer.name}</Text>
             </View>
           </View>
-          <View style={styles.headerButtons}>
-
-            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-              <LogOut size={24} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <LogOut size={24} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
@@ -267,21 +264,8 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: colors.white,
   },
-  headerButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-
-
   logoutButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+    padding: 8,
   },
   scrollView: {
     flex: 1,

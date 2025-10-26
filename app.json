@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "FitSa: Entrena y Progresa",
-    "slug": "fitsa-entrena-y-progresa",
+    "name": "FitSync: Entrena y Progresa",
+    "slug": "fitsync-entrena-y-progresa",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",

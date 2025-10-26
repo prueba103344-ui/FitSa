@@ -1,14 +1,16 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
 import { User, Student, Trainer, WorkoutPlan, DietPlan, DailyProgress } from '@/types';
 import { mockTrainer, mockStudent, mockStudents, mockWorkoutPlans, mockDietPlans, mockProgress } from '@/data/mockData';
 import { trpcClient } from '@/lib/trpc';
 
 const STORAGE_KEYS = {
   CURRENT_USER: '@fitsync_current_user',
-  LAST_SYNC: '@fitsync_last_sync',
+  STUDENTS: '@fitsync_students',
+  WORKOUT_PLANS: '@fitsync_workout_plans',
+  DIET_PLANS: '@fitsync_diet_plans',
+  PROGRESS: '@fitsync_progress',
 };
 
 export const [AppProvider, useApp] = createContextHook(() => {
@@ -17,146 +19,46 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>(mockWorkoutPlans);
   const [dietPlans, setDietPlans] = useState<DietPlan[]>(mockDietPlans);
   const [progress, setProgress] = useState<DailyProgress[]>(mockProgress);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [isHydrated, setIsHydrated] = useState<boolean>(false);
-
-  const syncFromBackend = useCallback(async (userId?: string, userRole?: 'trainer' | 'student') => {
-    console.log('🔄 Sincronizando datos desde el backend...');
-    setIsSyncing(true);
-    try {
-      const storedUser = await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-      const activeUserId = userId || (storedUser ? (JSON.parse(storedUser) as User).id : mockStudent.id);
-      const activeUserRole = userRole || (storedUser ? (JSON.parse(storedUser) as User).role : 'student');
-
-      let remoteStudents: Student[] = [];
-      try {
-        remoteStudents = await trpcClient.students.list.query();
-        if (remoteStudents && remoteStudents.length > 0) {
-          console.log(`✅ ${remoteStudents.length} estudiantes sincronizados`);
-          setStudents(remoteStudents);
-        }
-      } catch {
-        console.warn('⚠️ No se pudieron sincronizar estudiantes, usando datos locales');
-      }
-
-      if (activeUserRole === 'trainer') {
-        const studentIds = remoteStudents.length > 0 ? remoteStudents.map(s => s.id) : students.map(s => s.id);
-        
-        const allWorkouts: WorkoutPlan[] = [];
-        const allDiets: DietPlan[] = [];
-        const allProgress: DailyProgress[] = [];
-
-        for (const studentId of studentIds) {
-          const [workouts, diets, progress] = await Promise.all([
-            trpcClient.workouts.listByStudent.query({ studentId }).catch(() => []),
-            trpcClient.diets.listByStudent.query({ studentId }).catch(() => []),
-            trpcClient.progress.listByStudent.query({ studentId }).catch(() => []),
-          ]);
-          allWorkouts.push(...workouts);
-          allDiets.push(...diets);
-          allProgress.push(...progress);
-        }
-
-        if (allWorkouts.length > 0) {
-          console.log(`✅ ${allWorkouts.length} planes de entrenamiento sincronizados`);
-          setWorkoutPlans(allWorkouts);
-        } else {
-          console.log('ℹ️ Sin entrenamientos remotos; manteniendo datos locales');
-        }
-
-        if (allDiets.length > 0) {
-          console.log(`✅ ${allDiets.length} planes de dieta sincronizados`);
-          setDietPlans(allDiets);
-        } else {
-          console.log('ℹ️ Sin dietas remotas; manteniendo datos locales');
-        }
-
-        if (allProgress.length > 0) {
-          console.log(`✅ ${allProgress.length} registros de progreso sincronizados`);
-          setProgress(allProgress);
-        } else {
-          console.log('ℹ️ Sin progreso remoto; manteniendo datos locales');
-        }
-      } else {
-        const [remoteWorkouts, remoteDiets, remoteProgress] = await Promise.all([
-          trpcClient.workouts.listByStudent.query({ studentId: activeUserId }).catch((e) => {
-            console.warn('⚠️ No se pudieron sincronizar entrenamientos:', e.message);
-            return [];
-          }),
-          trpcClient.diets.listByStudent.query({ studentId: activeUserId }).catch((e) => {
-            console.warn('⚠️ No se pudieron sincronizar dietas:', e.message);
-            return [];
-          }),
-          trpcClient.progress.listByStudent.query({ studentId: activeUserId }).catch((e) => {
-            console.warn('⚠️ No se pudo sincronizar progreso:', e.message);
-            return [];
-          }),
-        ]);
-
-        if (remoteWorkouts && remoteWorkouts.length > 0) {
-          setWorkoutPlans(remoteWorkouts);
-          console.log(`✅ ${remoteWorkouts.length} planes de entrenamiento sincronizados`);
-        } else {
-          console.log('ℹ️ Sin entrenamientos remotos; manteniendo datos locales');
-        }
-
-        if (remoteDiets && remoteDiets.length > 0) {
-          setDietPlans(remoteDiets);
-          console.log(`✅ ${remoteDiets.length} planes de dieta sincronizados`);
-        } else {
-          console.log('ℹ️ Sin dietas remotas; manteniendo datos locales');
-        }
-
-        if (remoteProgress && remoteProgress.length > 0) {
-          setProgress(remoteProgress);
-          console.log(`✅ ${remoteProgress.length} registros de progreso sincronizados`);
-        } else {
-          console.log('ℹ️ Sin progreso remoto; manteniendo datos locales');
-        }
-      }
-
-      await AsyncStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
-      console.log('✅ Sincronización completada (modo offline si hubo errores)');
-    } catch (error) {
-      console.error('❌ Error sincronizando desde backend:', error);
-      console.log('📱 Continuando en modo offline con datos locales');
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [students]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const loadData = useCallback(async () => {
-    console.log('📱 Cargando datos...');
-    setIsLoading(true);
     try {
-      const storedUser = await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      const [storedUser, storedStudents, storedWorkouts, storedDiets, storedProgress] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER),
+        AsyncStorage.getItem(STORAGE_KEYS.STUDENTS),
+        AsyncStorage.getItem(STORAGE_KEYS.WORKOUT_PLANS),
+        AsyncStorage.getItem(STORAGE_KEYS.DIET_PLANS),
+        AsyncStorage.getItem(STORAGE_KEYS.PROGRESS),
+      ]);
 
-      if (storedUser) {
-        const user = JSON.parse(storedUser) as User;
-        setCurrentUser(user);
-        console.log(`👤 Usuario cargado: ${user.name}`);
-      }
+      if (storedUser) setCurrentUser(JSON.parse(storedUser));
+      if (storedStudents) setStudents(JSON.parse(storedStudents));
+      if (storedWorkouts) setWorkoutPlans(JSON.parse(storedWorkouts));
+      if (storedDiets) setDietPlans(JSON.parse(storedDiets));
+      if (storedProgress) setProgress(JSON.parse(storedProgress));
 
-      if (Platform.OS !== 'web') {
-        await syncFromBackend();
+      try {
+        const remoteStudents = await trpcClient.students.list.query();
+        if (remoteStudents && remoteStudents.length > 0) setStudents(remoteStudents);
+        const sid = storedUser ? (JSON.parse(storedUser) as User).id : mockStudent.id;
+        const [remoteWorkouts, remoteDiets] = await Promise.all([
+          trpcClient.workouts.listByStudent.query({ studentId: sid }).catch(() => []),
+          trpcClient.diets.listByStudent.query({ studentId: sid }).catch(() => []),
+        ]);
+        if (remoteWorkouts && remoteWorkouts.length > 0) setWorkoutPlans(remoteWorkouts);
+        if (remoteDiets && remoteDiets.length > 0) setDietPlans(remoteDiets);
+      } catch (e) {
+        console.log('Backend not available, using local data');
       }
     } catch (error) {
-      console.error('❌ Error cargando datos:', error);
+      console.error('Error loading data:', error);
     } finally {
       setIsLoading(false);
-      setIsHydrated(true);
     }
-  }, [syncFromBackend]);
+  }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setTimeout(() => {
-        loadData();
-      }, 100);
-    } else {
-      loadData();
-    }
+    loadData();
   }, [loadData]);
 
   const loginAsTrainer = useCallback(async () => {
@@ -164,29 +66,24 @@ export const [AppProvider, useApp] = createContextHook(() => {
       const trainerWithClients: Trainer = { ...mockTrainer, clients: students };
       await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(trainerWithClients));
       setCurrentUser(trainerWithClients);
-      console.log('👨‍🏫 Login como entrenador');
-      await syncFromBackend(trainerWithClients.id, 'trainer');
     } catch (error) {
       console.error('Error logging in as trainer:', error);
     }
-  }, [students, syncFromBackend]);
+  }, [students]);
 
   const loginAsStudent = useCallback(async () => {
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(mockStudent));
       setCurrentUser(mockStudent);
-      console.log('🎓 Login como estudiante');
-      await syncFromBackend(mockStudent.id, 'student');
     } catch (error) {
       console.error('Error logging in as student:', error);
     }
-  }, [syncFromBackend]);
+  }, []);
 
   const logout = useCallback(async () => {
     try {
       await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
       setCurrentUser(null);
-      console.log('👋 Logout exitoso');
     } catch (error) {
       console.error('Error logging out:', error);
     }
@@ -194,63 +91,54 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const addWorkoutPlan = useCallback(async (plan: WorkoutPlan) => {
     try {
-      console.log('➕ Agregando plan de entrenamiento:', plan.name);
       const updated = [...workoutPlans, plan];
+      await AsyncStorage.setItem(STORAGE_KEYS.WORKOUT_PLANS, JSON.stringify(updated));
       setWorkoutPlans(updated);
-      await trpcClient.workouts.upsert.mutate(plan);
-      console.log('✅ Plan sincronizado con el backend');
+      try { await trpcClient.workouts.upsert.mutate(plan); } catch {}
     } catch (error) {
-      console.error('❌ Error adding workout plan:', error);
-      throw error;
+      console.error('Error adding workout plan:', error);
     }
   }, [workoutPlans]);
 
   const updateWorkoutPlan = useCallback(async (planId: string, updates: Partial<WorkoutPlan>) => {
     try {
-      console.log('✏️ Actualizando plan de entrenamiento:', planId);
       const updated = workoutPlans.map(plan => 
         plan.id === planId ? { ...plan, ...updates } : plan
       );
+      await AsyncStorage.setItem(STORAGE_KEYS.WORKOUT_PLANS, JSON.stringify(updated));
       setWorkoutPlans(updated);
-      await trpcClient.workouts.update.mutate({ id: planId, updates });
-      console.log('✅ Plan actualizado en el backend');
+      try { await trpcClient.workouts.update.mutate({ id: planId, updates }); } catch {}
     } catch (error) {
-      console.error('❌ Error updating workout plan:', error);
-      throw error;
+      console.error('Error updating workout plan:', error);
     }
   }, [workoutPlans]);
 
   const addDietPlan = useCallback(async (plan: DietPlan) => {
     try {
-      console.log('➕ Agregando plan de dieta');
       const updated = [...dietPlans, plan];
+      await AsyncStorage.setItem(STORAGE_KEYS.DIET_PLANS, JSON.stringify(updated));
       setDietPlans(updated);
-      await trpcClient.diets.upsert.mutate(plan);
-      console.log('✅ Plan sincronizado con el backend');
+      try { await trpcClient.diets.upsert.mutate(plan); } catch {}
     } catch (error) {
-      console.error('❌ Error adding diet plan:', error);
-      throw error;
+      console.error('Error adding diet plan:', error);
     }
   }, [dietPlans]);
 
   const updateDietPlan = useCallback(async (planId: string, updates: Partial<DietPlan>) => {
     try {
-      console.log('✏️ Actualizando plan de dieta:', planId);
       const updated = dietPlans.map(plan => 
         plan.id === planId ? { ...plan, ...updates } : plan
       );
+      await AsyncStorage.setItem(STORAGE_KEYS.DIET_PLANS, JSON.stringify(updated));
       setDietPlans(updated);
-      await trpcClient.diets.update.mutate({ id: planId, updates });
-      console.log('✅ Plan actualizado en el backend');
+      try { await trpcClient.diets.update.mutate({ id: planId, updates }); } catch {}
     } catch (error) {
-      console.error('❌ Error updating diet plan:', error);
-      throw error;
+      console.error('Error updating diet plan:', error);
     }
   }, [dietPlans]);
 
   const updateProgress = useCallback(async (dailyProgress: DailyProgress) => {
     try {
-      console.log('📊 Actualizando progreso:', dailyProgress.date);
       const existingIndex = progress.findIndex(
         p => p.date === dailyProgress.date && p.studentId === dailyProgress.studentId
       );
@@ -263,12 +151,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
         updated = [...progress, dailyProgress];
       }
 
+      await AsyncStorage.setItem(STORAGE_KEYS.PROGRESS, JSON.stringify(updated));
       setProgress(updated);
-      await trpcClient.progress.upsert.mutate(dailyProgress);
-      console.log('✅ Progreso sincronizado con el backend');
     } catch (error) {
-      console.error('❌ Error updating progress:', error);
-      throw error;
+      console.error('Error updating progress:', error);
     }
   }, [progress]);
 
@@ -290,10 +176,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const addStudent = useCallback(async (student: Student) => {
     try {
-      console.log('➕ Agregando estudiante:', student.name);
       const updated = [...students, student];
+      await AsyncStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(updated));
       setStudents(updated);
-      await trpcClient.students.upsert.mutate(student as any);
+      try { await trpcClient.students.upsert.mutate(student as any); } catch {}
       
       if (currentUser?.role === 'trainer') {
         const updatedTrainer: Trainer = { 
@@ -303,24 +189,20 @@ export const [AppProvider, useApp] = createContextHook(() => {
         await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedTrainer));
         setCurrentUser(updatedTrainer);
       }
-      console.log('✅ Estudiante sincronizado con el backend');
     } catch (error) {
-      console.error('❌ Error adding student:', error);
-      throw error;
+      console.error('Error adding student:', error);
     }
   }, [students, currentUser]);
 
   const updateStudent = useCallback(async (studentId: string, updates: Partial<Student>) => {
     try {
-      console.log('✏️ Actualizando estudiante:', studentId);
       const updated = students.map(s => 
         s.id === studentId ? { ...s, ...updates } : s
       );
+      await AsyncStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(updated));
       setStudents(updated);
       const found = updated.find(s => s.id === studentId);
-      if (found) {
-        await trpcClient.students.upsert.mutate(found as any);
-      }
+      if (found) { try { await trpcClient.students.upsert.mutate(found as any); } catch {} }
       
       if (currentUser?.role === 'trainer') {
         const updatedTrainer: Trainer = { 
@@ -330,19 +212,17 @@ export const [AppProvider, useApp] = createContextHook(() => {
         await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedTrainer));
         setCurrentUser(updatedTrainer);
       }
-      console.log('✅ Estudiante actualizado en el backend');
     } catch (error) {
-      console.error('❌ Error updating student:', error);
-      throw error;
+      console.error('Error updating student:', error);
     }
   }, [students, currentUser]);
 
   const deleteStudent = useCallback(async (studentId: string) => {
     try {
-      console.log('🗑️ Eliminando estudiante:', studentId);
       const updated = students.filter(s => s.id !== studentId);
+      await AsyncStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(updated));
       setStudents(updated);
-      await trpcClient.students.remove.mutate({ id: studentId });
+      try { await trpcClient.students.remove.mutate({ id: studentId }); } catch {}
       
       if (currentUser?.role === 'trainer') {
         const updatedTrainer: Trainer = { 
@@ -352,36 +232,30 @@ export const [AppProvider, useApp] = createContextHook(() => {
         await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedTrainer));
         setCurrentUser(updatedTrainer);
       }
-      console.log('✅ Estudiante eliminado del backend');
     } catch (error) {
-      console.error('❌ Error deleting student:', error);
-      throw error;
+      console.error('Error deleting student:', error);
     }
   }, [students, currentUser]);
 
   const deleteWorkoutPlan = useCallback(async (planId: string) => {
     try {
-      console.log('🗑️ Eliminando plan de entrenamiento:', planId);
       const updated = workoutPlans.filter(p => p.id !== planId);
+      await AsyncStorage.setItem(STORAGE_KEYS.WORKOUT_PLANS, JSON.stringify(updated));
       setWorkoutPlans(updated);
-      await trpcClient.workouts.remove.mutate({ id: planId });
-      console.log('✅ Plan eliminado del backend');
+      try { await trpcClient.workouts.remove.mutate({ id: planId }); } catch {}
     } catch (error) {
-      console.error('❌ Error deleting workout plan:', error);
-      throw error;
+      console.error('Error deleting workout plan:', error);
     }
   }, [workoutPlans]);
 
   const deleteDietPlan = useCallback(async (planId: string) => {
     try {
-      console.log('🗑️ Eliminando plan de dieta:', planId);
       const updated = dietPlans.filter(p => p.id !== planId);
+      await AsyncStorage.setItem(STORAGE_KEYS.DIET_PLANS, JSON.stringify(updated));
       setDietPlans(updated);
-      await trpcClient.diets.remove.mutate({ id: planId });
-      console.log('✅ Plan eliminado del backend');
+      try { await trpcClient.diets.remove.mutate({ id: planId }); } catch {}
     } catch (error) {
-      console.error('❌ Error deleting diet plan:', error);
-      throw error;
+      console.error('Error deleting diet plan:', error);
     }
   }, [dietPlans]);
 
@@ -392,8 +266,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     dietPlans,
     progress,
     isLoading,
-    isSyncing,
-    isHydrated,
     loginAsTrainer,
     loginAsStudent,
     logout,
@@ -410,7 +282,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     getTodayProgress,
     getTodayWorkout,
     getTodayDiet,
-    syncFromBackend,
   }), [
     currentUser,
     students,
@@ -418,8 +289,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     dietPlans,
     progress,
     isLoading,
-    isSyncing,
-    isHydrated,
     loginAsTrainer,
     loginAsStudent,
     logout,
@@ -436,6 +305,5 @@ export const [AppProvider, useApp] = createContextHook(() => {
     getTodayProgress,
     getTodayWorkout,
     getTodayDiet,
-    syncFromBackend,
   ]);
 });

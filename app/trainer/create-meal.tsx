@@ -8,6 +8,7 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Platform,
   TouchableWithoutFeedback,
   Keyboard,
   Image,
@@ -16,13 +17,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useApp } from '@/contexts/AppContext';
 import colors from '@/constants/colors';
-import { ArrowLeft, Plus, Trash2, Sparkles, ImageUp, X } from 'lucide-react-native';
-import { Meal, Ingredient, Food } from '@/types';
+import { ArrowLeft, Plus, X, Trash2, Sparkles, ImageUp } from 'lucide-react-native';
+import { Meal, Ingredient, Direction, Food } from '@/types';
 import { generateText } from '@rork/toolkit-sdk';
-import { getFoodEmoji } from '@/constants/foodEmojis';
 import KeyboardAware from '@/components/KeyboardAware';
 import * as ImagePicker from 'expo-image-picker';
-import AnimatedSaveButton from '@/components/AnimatedSaveButton';
 
 export default function CreateMealScreen() {
   const router = useRouter();
@@ -33,14 +32,17 @@ export default function CreateMealScreen() {
   const [mealType, setMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('breakfast');
   const [prepTime, setPrepTime] = useState<string>('');
   const [imageUrl, setImageUrl] = useState<string>('');
+  const [foodImageUrl, setFoodImageUrl] = useState<string>('');
   const [picking, setPicking] = useState<boolean>(false);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [directions, setDirections] = useState<Direction[]>([]);
   const [isGeneratingMacros, setIsGeneratingMacros] = useState<boolean>(false);
-  const [selectedDays, setSelectedDays] = useState<number[]>([new Date().getDay()]);
 
   const [newIngredientName, setNewIngredientName] = useState<string>('');
   const [newIngredientQuantity, setNewIngredientQuantity] = useState<string>('');
   const [newIngredientUnit, setNewIngredientUnit] = useState<string>('g');
+
+  const [newDirection, setNewDirection] = useState<string>('');
 
   const addIngredient = () => {
     if (!newIngredientName || !newIngredientQuantity) {
@@ -52,7 +54,7 @@ export default function CreateMealScreen() {
       name: newIngredientName,
       quantity: parseFloat(newIngredientQuantity),
       unit: newIngredientUnit,
-      icon: getFoodEmoji(newIngredientName),
+      icon: '🥗',
     };
 
     setIngredients([...ingredients, ingredient]);
@@ -63,6 +65,28 @@ export default function CreateMealScreen() {
 
   const removeIngredient = (index: number) => {
     setIngredients(ingredients.filter((_, i) => i !== index));
+  };
+
+  const addDirection = () => {
+    if (!newDirection.trim()) {
+      Alert.alert('Error', 'Por favor escribe una instrucción');
+      return;
+    }
+
+    const direction: Direction = {
+      step: directions.length + 1,
+      instruction: newDirection.trim(),
+    };
+
+    setDirections([...directions, direction]);
+    setNewDirection('');
+  };
+
+  const removeDirection = (index: number) => {
+    const updated = directions
+      .filter((_, i) => i !== index)
+      .map((dir, i) => ({ ...dir, step: i + 1 }));
+    setDirections(updated);
   };
 
   const generateMacrosWithAI = async () => {
@@ -171,11 +195,6 @@ Ejemplo de respuesta: {"calories": 450, "protein": 35, "carbs": 40, "fat": 15}`;
       return;
     }
 
-    if (selectedDays.length === 0) {
-      Alert.alert('Error', 'Selecciona al menos un día');
-      return;
-    }
-
     const macros = await generateMacrosWithAI();
     if (!macros) return;
 
@@ -185,6 +204,7 @@ Ejemplo de respuesta: {"calories": 450, "protein": 35, "carbs": 40, "fat": 15}`;
       protein: macros.protein,
       carbs: macros.carbs,
       fat: macros.fat,
+      imageUrl: foodImageUrl || undefined,
     }];
 
     const meal: Meal = {
@@ -195,52 +215,48 @@ Ejemplo de respuesta: {"calories": 450, "protein": 35, "carbs": 40, "fat": 15}`;
       prepTime: prepTime ? parseInt(prepTime) : undefined,
       imageUrl: imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800',
       ingredients,
+      directions,
     };
 
-    for (const dayOfWeek of selectedDays) {
-      const existingDiet = dietPlans.find(plan => 
-        plan.studentId === studentId && plan.dayOfWeek === dayOfWeek
+    const existingDiet = dietPlans.find(plan => plan.studentId === studentId);
+
+    if (existingDiet) {
+      const updatedMeals = [...existingDiet.meals, meal];
+      const totalCalories = updatedMeals.reduce((acc, m) => 
+        acc + m.foods.reduce((a, f) => a + f.calories, 0), 0
+      );
+      const totalProtein = updatedMeals.reduce((acc, m) => 
+        acc + m.foods.reduce((a, f) => a + f.protein, 0), 0
+      );
+      const totalCarbs = updatedMeals.reduce((acc, m) => 
+        acc + m.foods.reduce((a, f) => a + f.carbs, 0), 0
+      );
+      const totalFat = updatedMeals.reduce((acc, m) => 
+        acc + m.foods.reduce((a, f) => a + f.fat, 0), 0
       );
 
-      if (existingDiet) {
-        const updatedMeals = [...existingDiet.meals, meal];
-        const totalCalories = updatedMeals.reduce((acc, m) => 
-          acc + m.foods.reduce((a, f) => a + f.calories, 0), 0
-        );
-        const totalProtein = updatedMeals.reduce((acc, m) => 
-          acc + m.foods.reduce((a, f) => a + f.protein, 0), 0
-        );
-        const totalCarbs = updatedMeals.reduce((acc, m) => 
-          acc + m.foods.reduce((a, f) => a + f.carbs, 0), 0
-        );
-        const totalFat = updatedMeals.reduce((acc, m) => 
-          acc + m.foods.reduce((a, f) => a + f.fat, 0), 0
-        );
-
-        await updateDietPlan(existingDiet.id, {
-          meals: updatedMeals,
-          totalCalories,
-          totalProtein,
-          totalCarbs,
-          totalFat,
-        });
-      } else {
-        await addDietPlan({
-          id: `diet-${Date.now()}-${dayOfWeek}`,
-          studentId: studentId as string,
-          name: 'Plan de Dieta',
-          dayOfWeek,
-          meals: [meal],
-          totalCalories: macros.calories,
-          totalProtein: macros.protein,
-          totalCarbs: macros.carbs,
-          totalFat: macros.fat,
-          createdAt: new Date().toISOString(),
-        });
-      }
+      await updateDietPlan(existingDiet.id, {
+        meals: updatedMeals,
+        totalCalories,
+        totalProtein,
+        totalCarbs,
+        totalFat,
+      });
+    } else {
+      await addDietPlan({
+        id: Date.now().toString(),
+        studentId: studentId as string,
+        name: 'Plan de Dieta',
+        meals: [meal],
+        totalCalories: macros.calories,
+        totalProtein: macros.protein,
+        totalCarbs: macros.carbs,
+        totalFat: macros.fat,
+        createdAt: new Date().toISOString(),
+      });
     }
 
-    Alert.alert('Éxito', `Comida creada para ${selectedDays.length} día(s)`);
+    Alert.alert('Éxito', 'Comida creada correctamente');
     router.back();
   };
 
@@ -272,35 +288,6 @@ Ejemplo de respuesta: {"calories": 450, "protein": 35, "carbs": 40, "fat": 15}`;
           >
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Información Básica</Text>
-            
-            <Text style={styles.label}>Días de la semana</Text>
-            <View style={styles.daysSelector}>
-              {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((day, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={[
-                    styles.dayOption,
-                    selectedDays.includes(idx) && styles.dayOptionSelected,
-                  ]}
-                  onPress={() => {
-                    if (selectedDays.includes(idx)) {
-                      setSelectedDays(selectedDays.filter(d => d !== idx));
-                    } else {
-                      setSelectedDays([...selectedDays, idx]);
-                    }
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.dayOptionText,
-                      selectedDays.includes(idx) && styles.dayOptionTextSelected,
-                    ]}
-                  >
-                    {day}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
             
             <Text style={styles.label}>Nombre de la comida</Text>
             <TextInput
@@ -344,8 +331,7 @@ Ejemplo de respuesta: {"calories": 450, "protein": 35, "carbs": 40, "fat": 15}`;
               placeholderTextColor={colors.textSecondary}
             />
 
-            <Text style={styles.label}>Foto de la comida (Visible en el menú del alumno)</Text>
-            <Text style={styles.sectionDescription}>Esta es la foto principal de la comida completa que verá el alumno en su menú</Text>
+            <Text style={styles.label}>Foto del plato (Visible en el menú del alumno)</Text>
             {imageUrl ? (
               <View>
                 <Image source={{ uri: imageUrl }} style={styles.preview} />
@@ -360,24 +346,55 @@ Ejemplo de respuesta: {"calories": 450, "protein": 35, "carbs": 40, "fat": 15}`;
             ) : (
               <View style={styles.imagePickerEmptyState}>
                 <ImageUp size={32} color={colors.textSecondary} />
-                <Text style={styles.imagePickerEmptyText}>Añade una foto de la comida completa</Text>
+                <Text style={styles.imagePickerEmptyText}>Añade una foto del plato para que el alumno la vea en su menú</Text>
               </View>
             )}
             <TouchableOpacity style={styles.imageButton} onPress={() => pickImage(setImageUrl)} disabled={picking}>
               <ImageUp size={20} color={colors.white} />
-              <Text style={styles.imageButtonText}>{picking ? 'Cargando...' : imageUrl ? 'Cambiar foto de la comida' : 'Subir foto de la comida'}</Text>
+              <Text style={styles.imageButtonText}>{picking ? 'Cargando...' : imageUrl ? 'Cambiar foto del plato' : 'Subir foto del plato'}</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.label}>URL de imagen (opcional)</Text>
+            <TextInput
+              style={styles.input}
+              value={imageUrl}
+              onChangeText={setImageUrl}
+              placeholder="https://..."
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Imagen del alimento principal</Text>
+            <Text style={styles.sectionDescription}>Esta foto se mostrará junto al nombre del alimento en la app del alumno</Text>
+            {foodImageUrl ? (
+              <View>
+                <Image source={{ uri: foodImageUrl }} style={styles.foodPreview} />
+                <TouchableOpacity 
+                  style={styles.removeImageButton} 
+                  onPress={() => setFoodImageUrl('')}
+                >
+                  <X size={16} color={colors.white} />
+                  <Text style={styles.removeImageText}>Quitar foto</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.imagePickerEmptyState}>
+                <ImageUp size={28} color={colors.textSecondary} />
+                <Text style={styles.imagePickerEmptyText}>Añade una foto del alimento</Text>
+              </View>
+            )}
+            <TouchableOpacity style={styles.imageButton} onPress={() => pickImage(setFoodImageUrl)} disabled={picking}>
+              <ImageUp size={20} color={colors.white} />
+              <Text style={styles.imageButtonText}>{picking ? 'Cargando...' : foodImageUrl ? 'Cambiar foto' : 'Subir foto del alimento'}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Ingredientes</Text>
-            <Text style={styles.sectionDescription}>Los emojis se asignan automáticamente según el nombre del ingrediente</Text>
             
             {ingredients.map((ingredient, index) => (
               <View key={index} style={styles.ingredientCard}>
-                <View style={styles.ingredientIcon}>
-                  <Text style={styles.ingredientIconText}>{ingredient.icon}</Text>
-                </View>
                 <View style={styles.ingredientInfo}>
                   <Text style={styles.ingredientName}>{ingredient.name}</Text>
                   <Text style={styles.ingredientQuantity}>
@@ -422,23 +439,55 @@ Ejemplo de respuesta: {"calories": 450, "protein": 35, "carbs": 40, "fat": 15}`;
             </View>
           </View>
 
-          {isGeneratingMacros ? (
-            <TouchableOpacity 
-              style={[styles.saveButton, styles.saveButtonDisabled]} 
-              disabled
-            >
-              <ActivityIndicator color={colors.background} />
-              <Text style={styles.saveButtonText}>Generando macros...</Text>
-            </TouchableOpacity>
-          ) : (
-            <AnimatedSaveButton
-              onPress={saveMeal}
-              title="Crear Comida con IA"
-              icon={<Sparkles size={20} color={colors.background} />}
-              style={styles.saveButton}
-              textStyle={styles.saveButtonText}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Instrucciones</Text>
+            
+            {directions.map((direction, index) => (
+              <View key={index} style={styles.directionCard}>
+                <View style={styles.directionNumber}>
+                  <Text style={styles.directionNumberText}>
+                    {String(direction.step).padStart(2, '0')}
+                  </Text>
+                </View>
+                <Text style={styles.directionText}>{direction.instruction}</Text>
+                <TouchableOpacity onPress={() => removeDirection(index)}>
+                  <X size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={newDirection}
+              onChangeText={setNewDirection}
+              placeholder="Escribe una instrucción..."
+              placeholderTextColor={colors.textSecondary}
+              multiline
+              numberOfLines={3}
             />
-          )}
+            <TouchableOpacity style={styles.addButton} onPress={addDirection}>
+              <Plus size={20} color={colors.background} />
+              <Text style={styles.addButtonText}>Añadir Instrucción</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity 
+            style={[styles.saveButton, isGeneratingMacros && styles.saveButtonDisabled]} 
+            onPress={saveMeal}
+            disabled={isGeneratingMacros}
+          >
+            {isGeneratingMacros ? (
+              <>
+                <ActivityIndicator color={colors.background} />
+                <Text style={styles.saveButtonText}>Generando macros...</Text>
+              </>
+            ) : (
+              <>
+                <Sparkles size={20} color={colors.background} />
+                <Text style={styles.saveButtonText}>Crear Comida con IA</Text>
+              </>
+            )}
+          </TouchableOpacity>
           </ScrollView>
         </TouchableWithoutFeedback>
       </SafeAreaView>
@@ -552,24 +601,13 @@ const styles = StyleSheet.create({
   ingredientCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
     backgroundColor: colors.card,
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: colors.border,
-  },
-  ingredientIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.cardLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  ingredientIconText: {
-    fontSize: 20,
   },
   ingredientInfo: {
     flex: 1,
@@ -714,33 +752,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600' as const,
     color: colors.white,
-  },
-  daysSelector: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-    flexWrap: 'wrap',
-  },
-  dayOption: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.border,
-  },
-  dayOptionSelected: {
-    borderColor: colors.neon,
-    backgroundColor: colors.neon + '20',
-  },
-  dayOptionText: {
-    fontSize: 14,
-    fontWeight: '700' as const,
-    color: colors.textSecondary,
-  },
-  dayOptionTextSelected: {
-    color: colors.neon,
   },
 });

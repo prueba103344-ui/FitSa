@@ -16,7 +16,6 @@ import { colors } from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { Student } from '@/types';
 import { ChevronLeft, ChevronRight, TrendingUp, ChevronDown, ChevronUp, Check, Sparkles, Edit2, X } from 'lucide-react-native';
-import AnimatedSaveButton from '@/components/AnimatedSaveButton';
 
 export default function StudentTrainingScreen() {
   const { currentUser, workoutPlans, updateWorkoutPlan } = useApp();
@@ -112,15 +111,15 @@ export default function StudentTrainingScreen() {
     
     Animated.sequence([
       Animated.spring(animationScale, {
-        toValue: isBig ? 1.2 : 1,
-        friction: 4,
-        tension: 50,
+        toValue: isBig ? 1.5 : 1,
+        friction: 3,
+        tension: 40,
         useNativeDriver: true,
       }),
       Animated.timing(animationScale, {
         toValue: 0,
-        duration: 500,
-        delay: isBig ? 1500 : 600,
+        duration: 400,
+        delay: isBig ? 1000 : 500,
         useNativeDriver: true,
       })
     ]).start(() => {
@@ -150,10 +149,10 @@ export default function StudentTrainingScreen() {
 
     await updateWorkoutPlan(workoutId, { exercises: updatedExercises });
 
-    if (allExercisesCompleted && !workout.exercises.every(ex => ex.sets.every(s => s.completed))) {
+    if (allSetsCompleted && !exercise.sets.every(s => s.completed)) {
+      showAnimation('🎯 ¡Ejercicio completado!', false);
+    } else if (allExercisesCompleted) {
       showAnimation('🔥 ¡Entrenamiento completado!', true);
-    } else if (allSetsCompleted && !exercise.sets.every(s => s.completed)) {
-      showAnimation('🎯 ¡Ejercicio completado!', true);
     } else {
       showAnimation('✓ Serie completada', false);
     }
@@ -325,13 +324,10 @@ export default function StudentTrainingScreen() {
                               const isDifferent = (set.actualReps && set.actualReps !== set.reps) || (set.actualWeight && set.actualWeight !== set.weight);
                               
                               return (
-                                <Animated.View 
-                                  key={idx} 
-                                  style={[
-                                    styles.setRow,
-                                    set.completed && styles.setRowCompleted,
-                                  ]}
-                                >
+                                <View key={idx} style={[
+                                  styles.setRow,
+                                  set.completed && styles.setRowCompleted,
+                                ]}>
                                   <TouchableOpacity
                                     style={styles.setRowLeft}
                                     onPress={() => toggleSetComplete(workout.id, exercise.id, idx)}
@@ -349,6 +345,9 @@ export default function StudentTrainingScreen() {
                                       ]}>
                                         Serie {set.set}
                                       </Text>
+                                      {hasActualValues && (
+                                        <Text style={styles.plannedLabel}>Pautado: {set.reps} reps • {set.weight} kg</Text>
+                                      )}
                                     </View>
                                   </TouchableOpacity>
                                   <View style={styles.setRowRight}>
@@ -376,7 +375,7 @@ export default function StudentTrainingScreen() {
                                       <Edit2 size={18} color={colors.neon} />
                                     </TouchableOpacity>
                                   </View>
-                                </Animated.View>
+                                </View>
                               );
                             })}
                           </View>
@@ -458,12 +457,12 @@ export default function StudentTrainingScreen() {
                 >
                   <Text style={styles.modalButtonTextCancel}>Cancelar</Text>
                 </TouchableOpacity>
-                <AnimatedSaveButton 
-                  onPress={saveEditSet}
-                  title="Guardar"
+                <TouchableOpacity 
                   style={[styles.modalButton, styles.modalButtonSave]}
-                  textStyle={styles.modalButtonText}
-                />
+                  onPress={saveEditSet}
+                >
+                  <Text style={styles.modalButtonText}>Guardar</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>

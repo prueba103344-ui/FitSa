@@ -4,7 +4,6 @@ import dietsRouter from "./routes/diets/router";
 import workoutsRouter from "./routes/workouts/router";
 import mediaRouter from "./routes/media/router";
 import studentsRouter from "./routes/students/router";
-import progressRouter from "./routes/progress/router";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -14,7 +13,6 @@ export const appRouter = createTRPCRouter({
   workouts: workoutsRouter,
   media: mediaRouter,
   students: studentsRouter,
-  progress: progressRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -16,8 +16,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useApp } from '@/contexts/AppContext';
 import colors from '@/constants/colors';
 import { ArrowLeft, TrendingUp, Dumbbell, Apple, Edit3, X, Plus, Trash2, ChefHat, ImagePlus } from 'lucide-react-native';
-import { Student, WorkoutPlan, DietPlan, Exercise, ExerciseSet, Meal, Food, Ingredient } from '@/types';
-import { getFoodEmoji } from '@/constants/foodEmojis';
+import { Student, WorkoutPlan, DietPlan, Exercise, ExerciseSet, Meal, Food } from '@/types';
 import * as ImagePicker from 'expo-image-picker';
 import { KeyboardAvoidingView } from 'react-native';
 
@@ -69,10 +68,6 @@ export default function StudentProfileScreen() {
   const [foodCarbs, setFoodCarbs] = useState<string>('');
   const [foodFat, setFoodFat] = useState<string>('');
   const [foodImage, setFoodImage] = useState<string>('');
-
-  const [mealIngredients, setMealIngredients] = useState<Ingredient[]>([]);
-  const [mealDirections, setMealDirections] = useState<any[]>([]);
-  const [mealPrepTime, setMealPrepTime] = useState<string>('');
 
   if (!student) {
     return (
@@ -223,7 +218,7 @@ export default function StudentProfileScreen() {
     }
 
     const newExercise: Exercise = {
-      id: selectedExerciseIndex >= 0 ? exercises[selectedExerciseIndex].id : `exercise-${Date.now()}`,
+      id: `exercise-${Date.now()}`,
       name: exerciseName,
       notes: exerciseNotes,
       imageUrl: exerciseImage,
@@ -299,9 +294,6 @@ export default function StudentProfileScreen() {
     setMealImage(meal.imageUrl || '');
     setMealType(meal.type || 'breakfast');
     setMealFoods(meal.foods);
-    setMealIngredients(meal.ingredients || []);
-    setMealDirections(meal.directions || []);
-    setMealPrepTime(meal.prepTime?.toString() || '');
     setEditMealModal(true);
   };
 
@@ -312,14 +304,11 @@ export default function StudentProfileScreen() {
     }
 
     const newMeal: Meal = {
-      id: selectedMealIndex >= 0 && studentDiets[0]?.meals[selectedMealIndex]?.id ? studentDiets[0].meals[selectedMealIndex].id : `meal-${Date.now()}`,
+      id: `meal-${Date.now()}`,
       name: mealName,
       imageUrl: mealImage,
       type: mealType,
       foods: mealFoods,
-      ingredients: mealIngredients,
-      directions: mealDirections,
-      prepTime: mealPrepTime ? parseInt(mealPrepTime) : undefined,
     };
 
     let diet = studentDiets[0];
@@ -395,10 +384,10 @@ export default function StudentProfileScreen() {
     setFoodName('');
     setFoodQuantity('100');
     setFoodUnit('g');
-    setFoodCalories('0');
-    setFoodProtein('0');
-    setFoodCarbs('0');
-    setFoodFat('0');
+    setFoodCalories('');
+    setFoodProtein('');
+    setFoodCarbs('');
+    setFoodFat('');
     setFoodImage('');
     setTimeout(() => setEditFoodModal(true), 100);
   };
@@ -433,7 +422,7 @@ export default function StudentProfileScreen() {
       protein: parseFloat(foodProtein) || 0,
       carbs: parseFloat(foodCarbs) || 0,
       fat: parseFloat(foodFat) || 0,
-      imageUrl: foodImage || undefined,
+      imageUrl: foodImage,
     };
 
     if (selectedFoodIndex >= 0) {
@@ -660,7 +649,7 @@ export default function StudentProfileScreen() {
                   <X color={colors.white} size={24} />
                 </TouchableOpacity>
               </View>
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}>
+              <ScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.label}>Peso (kg)</Text>
                 <TextInput
                   style={styles.input}
@@ -711,7 +700,7 @@ export default function StudentProfileScreen() {
                   <X color={colors.white} size={24} />
                 </TouchableOpacity>
               </View>
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}>
+              <ScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.label}>Nombre</Text>
                 <TextInput
                   style={styles.input}
@@ -796,7 +785,7 @@ export default function StudentProfileScreen() {
                   <X color={colors.white} size={24} />
                 </TouchableOpacity>
               </View>
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}>
+              <ScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.label}>Nombre</Text>
                 <TextInput
                   style={styles.input}
@@ -894,7 +883,7 @@ export default function StudentProfileScreen() {
                   <X color={colors.white} size={24} />
                 </TouchableOpacity>
               </View>
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}>
+              <ScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.label}>Nombre</Text>
                 <TextInput
                   style={styles.input}
@@ -950,25 +939,20 @@ export default function StudentProfileScreen() {
                   </View>
                   {mealFoods.map((food, idx) => (
                     <View key={idx} style={styles.foodItem}>
-                      <View style={styles.foodEmojiContainer}>
-                        <Text style={styles.foodEmoji}>{getFoodEmoji(food.name)}</Text>
-                      </View>
-                      <View style={styles.foodItemContent}>
-                        <View style={styles.foodItemHeader}>
-                          <Text style={styles.foodItemName}>{food.name}</Text>
-                          <View style={styles.foodItemActions}>
-                            <TouchableOpacity onPress={() => openEditFood(idx)} style={styles.iconButtonSmall}>
-                              <Edit3 size={14} color={colors.neon} />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => deleteFood(idx)} style={styles.iconButtonSmall}>
-                              <Trash2 size={14} color={colors.error} />
-                            </TouchableOpacity>
-                          </View>
+                      <View style={styles.foodItemHeader}>
+                        <Text style={styles.foodItemName}>{food.name}</Text>
+                        <View style={styles.foodItemActions}>
+                          <TouchableOpacity onPress={() => openEditFood(idx)} style={styles.iconButtonSmall}>
+                            <Edit3 size={14} color={colors.neon} />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => deleteFood(idx)} style={styles.iconButtonSmall}>
+                            <Trash2 size={14} color={colors.error} />
+                          </TouchableOpacity>
                         </View>
-                        <Text style={styles.foodItemDetails}>
-                          {food.quantity}{food.unit} • {food.calories}cal • P:{food.protein}g C:{food.carbs}g F:{food.fat}g
-                        </Text>
                       </View>
+                      <Text style={styles.foodItemDetails}>
+                        {food.quantity}{food.unit} • {food.calories}cal
+                      </Text>
                     </View>
                   ))}
                 </View>
@@ -995,7 +979,7 @@ export default function StudentProfileScreen() {
                   <X color={colors.white} size={24} />
                 </TouchableOpacity>
               </View>
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}>
+              <ScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.label}>Nombre</Text>
                 <TextInput
                   style={styles.input}
@@ -1005,11 +989,19 @@ export default function StudentProfileScreen() {
                   placeholderTextColor={colors.textSecondary}
                 />
                 
-                <Text style={styles.label}>Emoji (Auto)</Text>
-                <View style={styles.foodEmojiPreview}>
-                  <Text style={styles.foodEmojiLarge}>{foodName ? getFoodEmoji(foodName) : '🍽️'}</Text>
-                  <Text style={styles.foodEmojiHelp}>El emoji se asigna automáticamente según el nombre</Text>
-                </View>
+                <Text style={styles.label}>Imagen</Text>
+                <TouchableOpacity 
+                  style={styles.imagePickerButton}
+                  onPress={() => pickImage(setFoodImage)}
+                >
+                  <ImagePlus size={20} color={colors.white} />
+                  <Text style={styles.imagePickerText}>
+                    {foodImage ? 'Cambiar imagen' : 'Seleccionar imagen'}
+                  </Text>
+                </TouchableOpacity>
+                {foodImage && (
+                  <Image source={{ uri: foodImage }} style={styles.previewImage} />
+                )}
 
                 <View style={styles.quantityRow}>
                   <View style={styles.quantityInputGroup}>
@@ -1346,7 +1338,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
-    maxHeight: '92%',
+    maxHeight: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1544,32 +1536,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   foodItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
     backgroundColor: colors.cardLight,
     borderRadius: 12,
     padding: 16,
-  },
-  foodEmojiContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  foodEmoji: {
-    fontSize: 24,
-  },
-  foodItemContent: {
-    flex: 1,
   },
   foodItemHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   foodItemName: {
     fontSize: 15,
@@ -1621,26 +1596,5 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalScrollContent: {
-    paddingTop: 4,
-    paddingBottom: 40,
-  },
-  foodEmojiPreview: {
-    backgroundColor: colors.cardLight,
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
-  },
-  foodEmojiLarge: {
-    fontSize: 48,
-  },
-  foodEmojiHelp: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: 'center',
   },
 });

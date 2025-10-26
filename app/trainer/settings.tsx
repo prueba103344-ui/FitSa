@@ -29,7 +29,7 @@ export default function TrainerSettings() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { currentUser, logout } = useApp();
-  const trainer: Trainer | null = currentUser?.role === 'trainer' ? (currentUser as Trainer) : null;
+  const trainer = currentUser as Trainer;
   const [notificationsEnabled, setNotificationsEnabled] = React.useState<boolean>(true);
   const [darkModeEnabled, setDarkModeEnabled] = React.useState<boolean>(true);
 
@@ -51,11 +51,8 @@ export default function TrainerSettings() {
     );
   };
 
-  const avatarUri = trainer?.avatar ?? 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400&auto=format&fit=crop';
-  const displayName = trainer?.name ?? 'Entrenador';
-
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]} testID="trainer-settings-screen">
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Ajustes</Text>
       </View>
@@ -64,18 +61,17 @@ export default function TrainerSettings() {
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}
-        testID="settings-scroll"
       >
-        <View style={styles.profileCard} testID="profile-card">
+        <View style={styles.profileCard}>
           <Image
-            source={{ uri: avatarUri }}
+            source={{ uri: trainer.avatar }}
             style={styles.avatar}
           />
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{displayName}</Text>
+            <Text style={styles.profileName}>{trainer.name}</Text>
             <Text style={styles.profileRole}>Entrenador Personal</Text>
           </View>
-          <TouchableOpacity style={styles.editButton} testID="edit-profile-button">
+          <TouchableOpacity style={styles.editButton}>
             <Text style={styles.editButtonText}>Editar</Text>
           </TouchableOpacity>
         </View>
@@ -83,7 +79,7 @@ export default function TrainerSettings() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Preferencias</Text>
           
-          <View style={styles.settingItem} testID="notifications-toggle">
+          <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
               <View style={styles.iconContainer}>
                 <Bell size={20} color={colors.neon} />
@@ -101,7 +97,7 @@ export default function TrainerSettings() {
             />
           </View>
 
-          <View style={styles.settingItem} testID="darkmode-toggle">
+          <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
               <View style={styles.iconContainer}>
                 <Moon size={20} color={colors.neon} />
@@ -119,7 +115,7 @@ export default function TrainerSettings() {
             />
           </View>
 
-          <TouchableOpacity style={styles.settingItem} testID="language-item">
+          <TouchableOpacity style={styles.settingItem}>
             <View style={styles.settingLeft}>
               <View style={styles.iconContainer}>
                 <Globe size={20} color={colors.neon} />
@@ -136,7 +132,7 @@ export default function TrainerSettings() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Cuenta</Text>
           
-          <TouchableOpacity style={styles.settingItem} testID="personal-info-item">
+          <TouchableOpacity style={styles.settingItem}>
             <View style={styles.settingLeft}>
               <View style={styles.iconContainer}>
                 <User size={20} color={colors.neon} />
@@ -146,7 +142,7 @@ export default function TrainerSettings() {
             <ChevronRight size={20} color={colors.textSecondary} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingItem} testID="privacy-item">
+          <TouchableOpacity style={styles.settingItem}>
             <View style={styles.settingLeft}>
               <View style={styles.iconContainer}>
                 <Shield size={20} color={colors.neon} />
@@ -160,7 +156,7 @@ export default function TrainerSettings() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Soporte</Text>
           
-          <TouchableOpacity style={styles.settingItem} testID="support-item">
+          <TouchableOpacity style={styles.settingItem}>
             <View style={styles.settingLeft}>
               <View style={styles.iconContainer}>
                 <HelpCircle size={20} color={colors.neon} />
@@ -171,7 +167,7 @@ export default function TrainerSettings() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} testID="logout-button">
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <LogOut size={20} color={colors.error} />
           <Text style={styles.logoutText}>Cerrar Sesión</Text>
         </TouchableOpacity>

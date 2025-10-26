@@ -1,12 +1,11 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
-import { Plus, X, Trash2, UtensilsCrossed, Edit2, Sparkles, ImageUp } from 'lucide-react-native';
+import { Plus, X, Trash2, UtensilsCrossed, Edit2, Sparkles } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { DietPlan, Meal, Food, Trainer } from '@/types';
 import { generateObject } from '@rork/toolkit-sdk';
-import * as ImagePicker from 'expo-image-picker';
 import { z } from 'zod';
 
 export default function TrainerDietsScreen() {
@@ -30,57 +29,9 @@ export default function TrainerDietsScreen() {
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState<number>(0);
   const [editingMeal, setEditingMeal] = useState<{ planId: string; mealIndex: number } | null>(null);
   const [editingFood, setEditingFood] = useState<{ mealIndex: number; foodIndex: number } | null>(null);
-  const [foodImageUrl, setFoodImageUrl] = useState<string>('');
 
   const trainer = currentUser as Trainer;
   const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-
-  const pickFoodImage = async () => {
-    try {
-      if (Platform.OS === 'web') {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = async (e: any) => {
-          const file = e.target?.files?.[0];
-          if (file) {
-            const reader = new FileReader();
-            reader.onload = (event: any) => {
-              setFoodImageUrl(event.target.result);
-            };
-            reader.readAsDataURL(file);
-          }
-        };
-        input.click();
-        return;
-      }
-
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (perm.status !== 'granted') {
-        Alert.alert('Permiso requerido', 'Necesitamos acceso a tus fotos');
-        return;
-      }
-      
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        base64: true,
-        quality: 0.8,
-      });
-      
-      if (!result.canceled && result.assets && result.assets[0]) {
-        const asset = result.assets[0];
-        if (asset.base64) {
-          const dataUri = `data:${asset.mimeType ?? 'image/jpeg'};base64,${asset.base64}`;
-          setFoodImageUrl(dataUri);
-        } else if (asset.uri) {
-          setFoodImageUrl(asset.uri);
-        }
-      }
-    } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'No se pudo seleccionar la imagen');
-    }
-  };
 
   const generateMacrosWithAI = async () => {
     if (!foodName.trim()) {
@@ -158,7 +109,6 @@ export default function TrainerDietsScreen() {
       quantity: parseInt(quantity) || undefined,
       unit: quantity ? unit : undefined,
       completed: false,
-      imageUrl: foodImageUrl || undefined,
     };
 
     if (editingFood !== null && editingPlan) {
@@ -182,7 +132,6 @@ export default function TrainerDietsScreen() {
     setFat('');
     setQuantity('');
     setUnit('g');
-    setFoodImageUrl('');
   };
 
   const handleAddMeal = () => {
@@ -274,7 +223,6 @@ export default function TrainerDietsScreen() {
     setSelectedDayOfWeek(0);
     setEditingMeal(null);
     setEditingFood(null);
-    setFoodImageUrl('');
   };
 
   const handleEditPlan = (plan: DietPlan) => {
@@ -332,16 +280,7 @@ export default function TrainerDietsScreen() {
                 <TouchableOpacity onPress={() => handleEditPlan(plan)} style={styles.actionButton}>
                   <Edit2 color={colors.accent} size={20} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => {
-                  Alert.alert(
-                    'Confirmar eliminación',
-                    '¿Estás seguro de que quieres eliminar este plan de dieta?',
-                    [
-                      { text: 'Cancelar', style: 'cancel' },
-                      { text: 'Eliminar', style: 'destructive', onPress: () => deleteDietPlan(plan.id) }
-                    ]
-                  );
-                }} style={styles.actionButton}>
+                <TouchableOpacity onPress={() => deleteDietPlan(plan.id)} style={styles.actionButton}>
                   <Trash2 color={colors.error} size={20} />
                 </TouchableOpacity>
               </View>
@@ -368,7 +307,6 @@ export default function TrainerDietsScreen() {
                             setFat(food.fat.toString());
                             setQuantity(food.quantity?.toString() || '');
                             setUnit(food.unit || 'g');
-                            setFoodImageUrl(food.imageUrl || '');
                             setModalVisible(true);
                           }}
                           activeOpacity={0.7}
@@ -597,29 +535,6 @@ export default function TrainerDietsScreen() {
                     ))}
                   </View>
                 </View>
-
-                <Text style={styles.subLabel}>Foto del alimento (opcional)</Text>
-                {foodImageUrl ? (
-                  <View>
-                    <Image source={{ uri: foodImageUrl }} style={styles.foodImagePreview} />
-                    <TouchableOpacity 
-                      style={styles.removeImageButton} 
-                      onPress={() => setFoodImageUrl('')}
-                    >
-                      <X size={16} color={colors.white} />
-                      <Text style={styles.removeImageText}>Quitar foto</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={styles.imagePickerEmptyState}>
-                    <ImageUp size={28} color={colors.textSecondary} />
-                    <Text style={styles.imagePickerEmptyText}>Añade una foto del alimento</Text>
-                  </View>
-                )}
-                <TouchableOpacity style={styles.imageUploadButton} onPress={pickFoodImage}>
-                  <ImageUp size={20} color={colors.white} />
-                  <Text style={styles.imageUploadButtonText}>{foodImageUrl ? 'Cambiar foto' : 'Subir foto'}</Text>
-                </TouchableOpacity>
 
                 <TouchableOpacity style={styles.addFoodButton} onPress={handleAddFood}>
                   <Text style={styles.addFoodText}>+ Añadir Alimento</Text>
@@ -1048,58 +963,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.accent,
     marginTop: 2,
-  },
-  foodImagePreview: {
-    width: '100%',
-    height: 120,
-    borderRadius: 12,
-    resizeMode: 'cover' as const,
-    marginBottom: 12,
-  },
-  imageUploadButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: colors.primary,
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  imageUploadButtonText: {
-    fontSize: 14,
-    fontWeight: '700' as const,
-    color: colors.white,
-  },
-  imagePickerEmptyState: {
-    backgroundColor: colors.cardLight,
-    borderRadius: 12,
-    padding: 24,
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: colors.cardLight,
-    borderStyle: 'dashed' as const,
-  },
-  imagePickerEmptyText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center' as const,
-  },
-  removeImageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: colors.error,
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  removeImageText: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: colors.white,
   },
 });

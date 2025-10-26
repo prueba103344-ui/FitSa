@@ -272,12 +272,9 @@ export default function StudentDashboard() {
               <Text style={styles.dateText}>{today}</Text>
               <Text style={styles.userName}>Hola, {student.name} 👋</Text>
             </View>
-            <View style={styles.headerButtons}>
-
-              <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-                <LogOut size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+              <LogOut size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.heroStatsGrid}>
@@ -713,12 +710,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     letterSpacing: -0.5,
   },
-  headerButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-
-
   logoutButton: {
     width: 40,
     height: 40,

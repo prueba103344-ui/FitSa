@@ -1,6 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getFoodEmoji } from '@/constants/foodEmojis';
 import { colors } from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { Student, Meal } from '@/types';
@@ -56,19 +55,17 @@ export default function MealDetailScreen() {
     setCompletionMessage(message);
     setShowCompletionAnimation(true);
     
-    animationScale.setValue(0);
-    
     Animated.sequence([
       Animated.spring(animationScale, {
-        toValue: isBig ? 1.2 : 1,
-        friction: 4,
-        tension: 50,
+        toValue: isBig ? 1.5 : 1,
+        friction: 3,
+        tension: 40,
         useNativeDriver: true,
       }),
       Animated.timing(animationScale, {
         toValue: 0,
-        duration: 500,
-        delay: isBig ? 1500 : 600,
+        duration: 400,
+        delay: isBig ? 1000 : 500,
         useNativeDriver: true,
       })
     ]).start(() => {
@@ -167,9 +164,27 @@ export default function MealDetailScreen() {
               </View>
             </View>
 
+            <View style={styles.tabs}>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'ingredients' && styles.tabActive]}
+                onPress={() => setActiveTab('ingredients')}
+              >
+                <Text style={[styles.tabText, activeTab === 'ingredients' && styles.tabTextActive]}>
+                  INGREDIENTES
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'directions' && styles.tabActive]}
+                onPress={() => setActiveTab('directions')}
+              >
+                <Text style={[styles.tabText, activeTab === 'directions' && styles.tabTextActive]}>
+                  DIRECCIONES
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-
-            <View style={styles.ingredientsContainer}>
+            {activeTab === 'ingredients' && (
+              <View style={styles.ingredientsContainer}>
                 {meal.ingredients && meal.ingredients.length > 0 ? (
                   meal.ingredients.map((ingredient, index) => (
                     <TouchableOpacity
@@ -188,7 +203,7 @@ export default function MealDetailScreen() {
                         {completedFoods.has(index) && <Check size={16} color={colors.background} />}
                       </View>
                       <View style={styles.ingredientIcon}>
-                        <Text style={styles.ingredientIconText}>{ingredient.icon || getFoodEmoji(ingredient.name)}</Text>
+                        <Text style={styles.ingredientIconText}>{ingredient.icon || '🥗'}</Text>
                       </View>
                       <Text style={[
                         styles.ingredientName,
@@ -222,7 +237,7 @@ export default function MealDetailScreen() {
                         {completedFoods.has(index) && <Check size={16} color={colors.background} />}
                       </View>
                       <View style={styles.ingredientIcon}>
-                        <Text style={styles.ingredientIconText}>{getFoodEmoji(food.name)}</Text>
+                        <Text style={styles.ingredientIconText}>🥗</Text>
                       </View>
                       <Text style={[
                         styles.ingredientName,
@@ -239,7 +254,46 @@ export default function MealDetailScreen() {
                     </TouchableOpacity>
                   ))
                 )}
-            </View>
+              </View>
+            )}
+
+            {activeTab === 'directions' && (
+              <View style={styles.directionsContainer}>
+                {meal.directions && meal.directions.length > 0 ? (
+                  meal.directions.map((direction) => (
+                    <TouchableOpacity
+                      key={direction.step}
+                      style={styles.directionRow}
+                      onPress={() => toggleStep(direction.step)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.directionNumber}>
+                        <Text style={styles.directionNumberText}>
+                          {String(direction.step).padStart(2, '0')}
+                        </Text>
+                      </View>
+                      <Text style={[
+                        styles.directionText,
+                        completedSteps.has(direction.step) && styles.directionTextCompleted
+                      ]}>
+                        {direction.instruction}
+                      </Text>
+                      {completedSteps.has(direction.step) && (
+                        <View style={styles.checkIcon}>
+                          <Check size={20} color={colors.primary} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <View style={styles.emptyState}>
+                    <Text style={styles.emptyText}>
+                      No hay instrucciones disponibles para esta comida
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         </ScrollView>
 
