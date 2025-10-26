@@ -6,20 +6,19 @@ import superjson from "superjson";
 export const trpc = createTRPCReact<AppRouter>();
 
 const getBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    console.log('📍 Using relative URL for API routes');
+    return "";
+  }
+
   const envUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
-  if (envUrl && envUrl.length > 0) {
+  if (envUrl && envUrl.length > 0 && !envUrl.includes('rorktest.dev')) {
     console.log('📍 Using EXPO_PUBLIC_RORK_API_BASE_URL:', envUrl);
     return envUrl.replace(/\/$/, "");
   }
 
-  if (typeof window !== 'undefined') {
-    console.log('📍 Using relative URL on web: /api');
-    return "";
-  }
-
-  throw new Error(
-    "No base url found, please set EXPO_PUBLIC_RORK_API_BASE_URL for native"
-  );
+  console.log('📍 Using relative URL for API routes (native)');
+  return "";
 };
 
 const createHttpLink = () => httpBatchLink({
