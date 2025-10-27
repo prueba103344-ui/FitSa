@@ -29,7 +29,7 @@ export default function TrainerSettings() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { currentUser, logout } = useApp();
-  const trainer = currentUser as Trainer;
+  const trainer = (currentUser && currentUser.role === 'trainer') ? (currentUser as Trainer) : null;
   const [notificationsEnabled, setNotificationsEnabled] = React.useState<boolean>(true);
   const [darkModeEnabled, setDarkModeEnabled] = React.useState<boolean>(true);
 
@@ -51,6 +51,17 @@ export default function TrainerSettings() {
     );
   };
 
+  if (!trainer) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top, alignItems: 'center', justifyContent: 'center' }]}>
+        <Text style={styles.headerTitle}>No has iniciado sesión</Text>
+        <TouchableOpacity style={styles.editButton} onPress={() => router.replace('/auth/trainer' as any)} testID="trainer-settings-login-cta">
+          <Text style={styles.editButtonText}>Ir a iniciar sesión</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
@@ -63,9 +74,9 @@ export default function TrainerSettings() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.profileCard}>
-          <Avatar uri={trainer.avatar} name={trainer.name} size={64} borderColor={colors.neon} testID="trainer-settings-avatar" />
+          <Avatar uri={trainer?.avatar} name={trainer?.name ?? 'Entrenador'} size={64} borderColor={colors.neon} testID="trainer-settings-avatar" />
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{trainer.name}</Text>
+            <Text style={styles.profileName}>{trainer?.name ?? 'Entrenador'}</Text>
             <Text style={styles.profileRole}>Entrenador Personal</Text>
           </View>
           <TouchableOpacity style={styles.editButton}>
