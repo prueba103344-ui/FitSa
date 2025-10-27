@@ -33,10 +33,6 @@ export const trpcClient = trpc.createClient({
             },
           });
           console.log('[TRPC] Response status:', response.status);
-          if (!response.ok) {
-            const text = await response.text();
-            console.error('[TRPC] Error response body:', text.substring(0, 500));
-          }
           return response;
         } catch (error) {
           console.error('[TRPC] Fetch error:', error);
