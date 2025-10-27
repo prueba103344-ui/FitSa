@@ -72,13 +72,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
       await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(trainer));
       setCurrentUser(trainer);
     } catch (error: any) {
-      console.error('[AppContext] Registration error:', error);
-      console.error('[AppContext] Error details:', {
-        message: error?.message,
-        code: error?.code,
-        data: error?.data,
-        cause: error?.cause,
-      });
+      console.error('[AppContext] Registration error:', error?.message || error);
+      if (error?.message?.includes('Backend returned')) {
+        throw new Error('No se pudo conectar al servidor. Verifica que el backend esté ejecutándose.');
+      }
       throw error;
     }
   }, [getKey]);
@@ -92,13 +89,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
       await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(user));
       setCurrentUser(user);
     } catch (error: any) {
-      console.error('[AppContext] Login error:', error);
-      console.error('[AppContext] Error details:', {
-        message: error?.message,
-        code: error?.code,
-        data: error?.data,
-        cause: error?.cause,
-      });
+      console.error('[AppContext] Login error:', error?.message || error);
+      if (error?.message?.includes('Backend returned')) {
+        throw new Error('No se pudo conectar al servidor. Verifica que el backend esté ejecutándose.');
+      }
       throw error;
     }
   }, [getKey]);

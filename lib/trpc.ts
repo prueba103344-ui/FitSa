@@ -33,6 +33,15 @@ export const trpcClient = trpc.createClient({
             },
           });
           console.log('[TRPC] Response status:', response.status);
+          
+          if (!response.ok) {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('text/html')) {
+              console.error('[TRPC] Received HTML response (likely 404). Check your backend URL.');
+              throw new Error(`Backend returned ${response.status}: The endpoint may not exist or the URL is incorrect`);
+            }
+          }
+          
           return response;
         } catch (error) {
           console.error('[TRPC] Fetch error:', error);
