@@ -65,26 +65,40 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const registerTrainer = useCallback(async (username: string, password: string, name: string) => {
     try {
-      console.log('[AppContext] Registering trainer (cloud)');
+      console.log('[AppContext] Registering trainer (cloud) with username:', username);
       const res = await trpcClient.auth.signupTrainer.mutate({ username, password, name });
+      console.log('[AppContext] Registration successful, response:', res);
       const trainer: Trainer = { id: res.user.id, name: res.user.name, role: 'trainer', clients: [], avatar: res.user.avatar } as Trainer;
       await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(trainer));
       setCurrentUser(trainer);
-    } catch (error) {
+    } catch (error: any) {
       console.error('[AppContext] Registration error:', error);
+      console.error('[AppContext] Error details:', {
+        message: error?.message,
+        code: error?.code,
+        data: error?.data,
+        cause: error?.cause,
+      });
       throw error;
     }
   }, [getKey]);
 
   const login = useCallback(async (username: string, password: string) => {
     try {
-      console.log('[AppContext] Logging in (cloud)');
+      console.log('[AppContext] Logging in (cloud) with username:', username);
       const res = await trpcClient.auth.login.mutate({ username, password });
+      console.log('[AppContext] Login successful, response:', res);
       const user = res.user as User;
       await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(user));
       setCurrentUser(user);
-    } catch (error) {
+    } catch (error: any) {
       console.error('[AppContext] Login error:', error);
+      console.error('[AppContext] Error details:', {
+        message: error?.message,
+        code: error?.code,
+        data: error?.data,
+        cause: error?.cause,
+      });
       throw error;
     }
   }, [getKey]);

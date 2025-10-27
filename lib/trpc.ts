@@ -8,6 +8,7 @@ export const trpc = createTRPCReact<AppRouter>();
 const getBaseUrl = () => {
   const envUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
   if (envUrl && typeof envUrl === "string" && envUrl.length > 0) {
+    console.log('[TRPC] Using base URL:', envUrl);
     return envUrl;
   }
   console.error(
@@ -21,6 +22,27 @@ export const trpcClient = trpc.createClient({
     httpLink({
       url: `${getBaseUrl()}/api/trpc`,
       transformer: superjson,
+      fetch: async (url, options) => {
+        console.log('[TRPC] Fetching:', url);
+        try {
+          const response = await fetch(url, {
+            ...options,
+            headers: {
+              ...options?.headers,
+              'Content-Type': 'application/json',
+            },
+          });
+          console.log('[TRPC] Response status:', response.status);
+          if (!response.ok) {
+            const text = await response.text();
+            console.error('[TRPC] Error response body:', text.substring(0, 500));
+          }
+          return response;
+        } catch (error) {
+          console.error('[TRPC] Fetch error:', error);
+          throw error;
+        }
+      },
     }),
   ],
 });
