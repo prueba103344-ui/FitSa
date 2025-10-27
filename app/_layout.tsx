@@ -3,7 +3,6 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { StyleSheet } from 'react-native';
 import { AppProvider } from '@/contexts/AppContext';
 import { trpc, trpcClient } from '@/lib/trpc';
 
@@ -28,23 +27,17 @@ function RootLayoutNav() {
 export default function RootLayout() {
   useEffect(() => {
     SplashScreen.hideAsync();
-    console.log('[App] EXPO_PUBLIC_RORK_API_BASE_URL:', process.env.EXPO_PUBLIC_RORK_API_BASE_URL);
-    console.log('[App] Full tRPC URL:', `${process.env.EXPO_PUBLIC_RORK_API_BASE_URL}/api/trpc`);
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
         <AppProvider>
-          <GestureHandlerRootView style={styles.flex}>
+          <GestureHandlerRootView>
             <RootLayoutNav />
           </GestureHandlerRootView>
         </AppProvider>
-      </trpc.Provider>
-    </QueryClientProvider>
+      </QueryClientProvider>
+    </trpc.Provider>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-});

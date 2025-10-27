@@ -14,20 +14,14 @@ export default function StudentAuthScreen() {
   const [loading, setLoading] = useState<boolean>(false);
 
   const onSubmit = async () => {
-    const u = username.trim();
-    const p = password.trim();
-    if (!u || !p) {
+    if (!username || !password) {
       Alert.alert('Error', 'Por favor completa todos los campos');
-      return;
-    }
-    if (p.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
       return;
     }
     setLoading(true);
     try {
-      console.log('[StudentAuth] Attempting login for username:', u);
-      await login(u, p);
+      console.log('[StudentAuth] Attempting login for username:', username);
+      await login(username, password);
       console.log('[StudentAuth] Success! Redirecting to /student');
       router.replace('/student' as any);
     } catch (e: any) {

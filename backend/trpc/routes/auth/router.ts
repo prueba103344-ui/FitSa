@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { TRPCError } from '@trpc/server';
 import { createTRPCRouter, publicProcedure } from '@/backend/trpc/create-context';
 import { readDB, writeDB, hashPassword, StoredUser } from '@/backend/db';
 import { Student, Trainer } from '@/types';
@@ -13,12 +12,9 @@ export default createTRPCRouter({
     password: passwordSchema,
     name: z.string().min(2).max(64),
   })).mutation(async ({ input }) => {
-    console.log('[Auth] signupTrainer called with username:', input.username);
     const db = await readDB();
     const existing = db.users.find(u => u.username.toLowerCase() === input.username.toLowerCase());
-    if (existing) {
-      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Usuario ya existe' });
-    }
+    if (existing) throw new Error('Usuario ya existe');
 
     const id = `trainer_${Date.now()}`;
     const { salt, hash } = hashPassword(input.password);
@@ -44,16 +40,11 @@ export default createTRPCRouter({
     password: passwordSchema,
     name: z.string().min(2).max(64),
   })).mutation(async ({ input }) => {
-    console.log('[Auth] createStudentAccount called for trainer:', input.trainerId);
     const db = await readDB();
     const trainer = db.users.find(u => u.id === input.trainerId && u.role === 'trainer');
-    if (!trainer) {
-      throw new TRPCError({ code: 'NOT_FOUND', message: 'Entrenador no encontrado' });
-    }
+    if (!trainer) throw new Error('Entrenador no encontrado');
     const exists = db.users.find(u => u.username.toLowerCase() === input.username.toLowerCase());
-    if (exists) {
-      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Usuario ya existe' });
-    }
+    if (exists) throw new Error('Usuario ya existe');
 
     const id = `student_${Date.now()}`;
     const { salt, hash } = hashPassword(input.password);
@@ -88,16 +79,11 @@ export default createTRPCRouter({
     username: usernameSchema,
     password: passwordSchema,
   })).mutation(async ({ input }) => {
-    console.log('[Auth] login called with username:', input.username);
     const db = await readDB();
     const user = db.users.find(u => u.username.toLowerCase() === input.username.toLowerCase());
-    if (!user) {
-      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciales inválidas' });
-    }
+    if (!user) throw new Error('Credenciales inválidas');
     const { hash } = hashPassword(input.password, user.salt);
-    if (hash !== user.passwordHash) {
-      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciales inválidas' });
-    }
+    if (hash !== user.passwordHash) throw new Error('Credenciales inválidas');
 
     if (user.role === 'trainer') {
       const trainer: Trainer = { id: user.id, name: user.name, role: 'trainer', clients: [] };

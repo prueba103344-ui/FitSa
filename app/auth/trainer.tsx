@@ -16,24 +16,17 @@ export default function TrainerAuthScreen() {
   const [loading, setLoading] = useState<boolean>(false);
 
   const onSubmit = async () => {
-    const u = username.trim();
-    const p = password.trim();
-    const n = name.trim();
-    if (!u || !p || (mode === 'register' && !n)) {
+    if (!username || !password || (mode === 'register' && !name)) {
       Alert.alert('Error', 'Por favor completa todos los campos');
-      return;
-    }
-    if (p.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
       return;
     }
     setLoading(true);
     try {
-      console.log('[TrainerAuth] Attempting', mode, 'for username:', u);
+      console.log('[TrainerAuth] Attempting', mode, 'for username:', username);
       if (mode === 'login') {
-        await login(u, p);
+        await login(username, password);
       } else {
-        await registerTrainer(u, p, n);
+        await registerTrainer(username, password, name);
       }
       console.log('[TrainerAuth] Success! Redirecting to /trainer');
       router.replace('/trainer' as any);
