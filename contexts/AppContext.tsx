@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, Student, Trainer, WorkoutPlan, DietPlan, DailyProgress } from '@/types';
 import { trpcClient } from '@/lib/trpc';
+import { getSession, signInWithPassword, signOut, signUp } from '@/lib/supabase';
+import { supaDB, type ProfileRow } from '@/lib/supabase-db';
 
 const STORAGE_KEYS = {
   CURRENT_USER: '@fitsa_current_user',
@@ -24,6 +26,20 @@ export const [AppProvider, useApp] = createContextHook(() => {
       if (storedUser) {
         const parsed = JSON.parse(storedUser) as User;
         setCurrentUser(parsed);
+        setIsLoading(false);
+        return;
+      }
+      const session = await getSession();
+      if (session?.user?.id) {
+        console.log('[AppContext] Found Supabase session for user:', session.user.id);
+        const profile = await supaDB.getProfile(session.user.id);
+        if (profile) {
+          const user: User = profile.role === 'trainer'
+            ? { id: profile.id, name: profile.name, role: 'trainer', avatar: profile.avatar ?? undefined }
+            : { id: profile.id, name: profile.name, role: 'student', avatar: profile.avatar ?? undefined };
+          await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(user));
+          setCurrentUser(user);
+        }
       }
     } catch (error) {
       console.error('[AppContext] Error loading session:', error);
@@ -45,6 +61,21 @@ export const [AppProvider, useApp] = createContextHook(() => {
         return;
       }
       try {
+        const session = await getSession();
+        if (session) {
+          if (currentUser.role === 'trainer') {
+            const list = await supaDB.listStudentsByTrainer(currentUser.id);
+            setStudents(list);
+          } else {
+            const [workouts, diets] = await Promise.all([
+              supaDB.listWorkoutsByStudent(currentUser.id),
+              supaDB.listDietsByStudent(currentUser.id),
+            ]);
+            setWorkoutPlans(workouts);
+            setDietPlans(diets);
+          }
+          return;
+        }
         if (currentUser.role === 'trainer') {
           const list = await trpcClient.students.listByTrainer.query({ trainerId: currentUser.id });
           setStudents(list);
@@ -65,40 +96,47 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const registerTrainer = useCallback(async (username: string, password: string, name: string) => {
     try {
-      console.log('[AppContext] Registering trainer (cloud) with username:', username);
-      const res = await trpcClient.auth.signupTrainer.mutate({ username, password, name });
-      console.log('[AppContext] Registration successful, response:', res);
-      const trainer: Trainer = { id: res.user.id, name: res.user.name, role: 'trainer', clients: [], avatar: res.user.avatar } as Trainer;
+      console.log('[AppContext] Registering trainer via Supabase with username:', username);
+      const email = username.includes('@') ? username : `${username}@fit.local`;
+      await signUp({ email, password, data: { role: 'trainer', name } });
+      const session = await signInWithPassword({ email, password });
+      const userId = session.user?.id ?? (session as any).user?.id ?? (session as any).id;
+      if (!userId) throw new Error('No se pudo obtener el usuario de Supabase');
+      const profile: ProfileRow = { id: userId, role: 'trainer', name, avatar: null };
+      await supaDB.upsertProfile(profile);
+      const trainer: Trainer = { id: userId, name, role: 'trainer', clients: [], avatar: undefined };
       await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(trainer));
       setCurrentUser(trainer);
     } catch (error: any) {
       console.error('[AppContext] Registration error:', error?.message || error);
-      if (error?.message?.includes('Backend returned')) {
-        throw new Error('No se pudo conectar al servidor. Verifica que el backend esté ejecutándose.');
-      }
-      throw error;
+      throw new Error(error?.message ?? 'No se pudo crear la cuenta');
     }
   }, [getKey]);
 
   const login = useCallback(async (username: string, password: string) => {
     try {
-      console.log('[AppContext] Logging in (cloud) with username:', username);
-      const res = await trpcClient.auth.login.mutate({ username, password });
-      console.log('[AppContext] Login successful, response:', res);
-      const user = res.user as User;
+      console.log('[AppContext] Logging in via Supabase with username:', username);
+      const email = username.includes('@') ? username : `${username}@fit.local`;
+      await signInWithPassword({ email, password });
+      const session = await getSession();
+      const uid = session?.user?.id;
+      if (!uid) throw new Error('No se pudo iniciar sesión');
+      const profile = await supaDB.getProfile(uid);
+      if (!profile) throw new Error('Perfil no encontrado');
+      const user: User = profile.role === 'trainer'
+        ? { id: profile.id, name: profile.name, role: 'trainer', avatar: profile.avatar ?? undefined }
+        : { id: profile.id, name: profile.name, role: 'student', avatar: profile.avatar ?? undefined };
       await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(user));
       setCurrentUser(user);
     } catch (error: any) {
       console.error('[AppContext] Login error:', error?.message || error);
-      if (error?.message?.includes('Backend returned')) {
-        throw new Error('No se pudo conectar al servidor. Verifica que el backend esté ejecutándose.');
-      }
-      throw error;
+      throw new Error(error?.message ?? 'No se pudo iniciar sesión');
     }
   }, [getKey]);
 
   const logout = useCallback(async () => {
     try {
+      await signOut();
       await AsyncStorage.removeItem(getKey('CURRENT_USER'));
       setCurrentUser(null);
       setStudents([]);
@@ -113,30 +151,30 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const createStudentAccount = useCallback(async (data: { username: string; password: string; name: string }) => {
     if (!currentUser || currentUser.role !== 'trainer') throw new Error('No autorizado');
     try {
-      console.log('[AppContext] Creating student (cloud)');
-      const res = await trpcClient.auth.createStudentAccount.mutate({
-        trainerId: currentUser.id,
-        username: data.username,
-        password: data.password,
-        name: data.name,
-      });
-      const newStudent = res.student as Student;
-      setStudents(prev => [...prev, newStudent]);
-      if (currentUser.role === 'trainer') {
-        const trainerUser = currentUser as Trainer;
-        const updatedTrainer: Trainer = { ...trainerUser, clients: [...(trainerUser.clients ?? []), newStudent] };
-        await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(updatedTrainer));
-        setCurrentUser(updatedTrainer);
-      }
-      return newStudent;
+      console.log('[AppContext] Creating student record in Supabase');
+      const student: Student = { id: `student_${Date.now()}`, name: data.name, role: 'student', trainerId: currentUser.id };
+      await supaDB.upsertStudent(student);
+      setStudents(prev => [...prev, student]);
+      const trainerUser = currentUser as Trainer;
+      const updatedTrainer: Trainer = { ...trainerUser, clients: [...(trainerUser.clients ?? []), student] };
+      await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(updatedTrainer));
+      setCurrentUser(updatedTrainer);
+      return student;
     } catch (error) {
       console.error('[AppContext] Error creating student:', error);
-      throw error;
+      throw error as Error;
     }
   }, [currentUser, getKey]);
 
   const addWorkoutPlan = useCallback(async (plan: WorkoutPlan) => {
     try {
+      const session = await getSession();
+      if (session) {
+        await supaDB.upsertWorkout(plan);
+        const refreshed = await supaDB.listWorkoutsByStudent(plan.studentId);
+        setWorkoutPlans(refreshed);
+        return;
+      }
       await trpcClient.workouts.upsert.mutate(plan);
       const refreshed = await trpcClient.workouts.listByStudent.query({ studentId: plan.studentId });
       setWorkoutPlans(refreshed);
@@ -147,8 +185,17 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const updateWorkoutPlan = useCallback(async (planId: string, updates: Partial<WorkoutPlan>) => {
     try {
-      await trpcClient.workouts.update.mutate({ id: planId, updates });
+      const session = await getSession();
       const targetStudentId = workoutPlans.find(w => w.id === planId)?.studentId;
+      if (session) {
+        await supaDB.updateWorkout(planId, updates);
+        if (targetStudentId) {
+          const refreshed = await supaDB.listWorkoutsByStudent(targetStudentId);
+          setWorkoutPlans(refreshed);
+        }
+        return;
+      }
+      await trpcClient.workouts.update.mutate({ id: planId, updates });
       if (targetStudentId) {
         const refreshed = await trpcClient.workouts.listByStudent.query({ studentId: targetStudentId });
         setWorkoutPlans(refreshed);
@@ -160,6 +207,12 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const deleteWorkoutPlan = useCallback(async (planId: string) => {
     try {
+      const session = await getSession();
+      if (session) {
+        await supaDB.deleteWorkout(planId);
+        setWorkoutPlans(prev => prev.filter(p => p.id !== planId));
+        return;
+      }
       await trpcClient.workouts.remove.mutate({ id: planId });
       setWorkoutPlans(prev => prev.filter(p => p.id !== planId));
     } catch (error) {
@@ -169,6 +222,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const addDietPlan = useCallback(async (plan: DietPlan) => {
     try {
+      const session = await getSession();
+      if (session) {
+        await supaDB.upsertDiet(plan);
+        const refreshed = await supaDB.listDietsByStudent(plan.studentId);
+        setDietPlans(refreshed);
+        return;
+      }
       await trpcClient.diets.upsert.mutate(plan);
       const refreshed = await trpcClient.diets.listByStudent.query({ studentId: plan.studentId });
       setDietPlans(refreshed);
@@ -179,8 +239,17 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const updateDietPlan = useCallback(async (planId: string, updates: Partial<DietPlan>) => {
     try {
-      await trpcClient.diets.update.mutate({ id: planId, updates });
+      const session = await getSession();
       const targetStudentId = dietPlans.find(d => d.id === planId)?.studentId;
+      if (session) {
+        await supaDB.updateDiet(planId, updates);
+        if (targetStudentId) {
+          const refreshed = await supaDB.listDietsByStudent(targetStudentId);
+          setDietPlans(refreshed);
+        }
+        return;
+      }
+      await trpcClient.diets.update.mutate({ id: planId, updates });
       if (targetStudentId) {
         const refreshed = await trpcClient.diets.listByStudent.query({ studentId: targetStudentId });
         setDietPlans(refreshed);
@@ -192,6 +261,12 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const deleteDietPlan = useCallback(async (planId: string) => {
     try {
+      const session = await getSession();
+      if (session) {
+        await supaDB.deleteDiet(planId);
+        setDietPlans(prev => prev.filter(p => p.id !== planId));
+        return;
+      }
       await trpcClient.diets.remove.mutate({ id: planId });
       setDietPlans(prev => prev.filter(p => p.id !== planId));
     } catch (error) {
@@ -231,6 +306,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const addStudent = useCallback(async (student: Student) => {
     try {
+      const session = await getSession();
+      if (session) {
+        await supaDB.upsertStudent(student);
+        const list = await supaDB.listStudentsByTrainer(student.trainerId);
+        setStudents(list);
+        return;
+      }
       await trpcClient.students.upsert.mutate(student as any);
       const list = await trpcClient.students.listByTrainer.query({ trainerId: student.trainerId });
       setStudents(list);
@@ -244,6 +326,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
       const existing = students.find(s => s.id === studentId);
       if (!existing) return;
       const updated: Student = { ...existing, ...updates } as Student;
+      const session = await getSession();
+      if (session) {
+        await supaDB.upsertStudent(updated);
+        const list = await supaDB.listStudentsByTrainer(updated.trainerId);
+        setStudents(list);
+        return;
+      }
       await trpcClient.students.upsert.mutate(updated as any);
       const list = await trpcClient.students.listByTrainer.query({ trainerId: updated.trainerId });
       setStudents(list);
@@ -254,6 +343,12 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const deleteStudent = useCallback(async (studentId: string) => {
     try {
+      const session = await getSession();
+      if (session) {
+        await supaDB.deleteStudent(studentId);
+        setStudents(prev => prev.filter(s => s.id !== studentId));
+        return;
+      }
       await trpcClient.students.remove.mutate({ id: studentId });
       setStudents(prev => prev.filter(s => s.id !== studentId));
     } catch (error) {
