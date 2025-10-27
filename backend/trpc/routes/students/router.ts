@@ -8,6 +8,8 @@ const studentInput = z.object({
   name: z.string(),
   role: z.literal('student'),
   trainerId: z.string(),
+  loginUsername: z.string().optional(),
+  loginPassword: z.string().optional(),
   weight: z.number().optional(),
   height: z.number().optional(),
   age: z.number().optional(),

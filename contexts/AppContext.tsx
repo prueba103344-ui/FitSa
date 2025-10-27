@@ -3,15 +3,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, Student, Trainer, WorkoutPlan, DietPlan, DailyProgress } from '@/types';
 import { trpcClient } from '@/lib/trpc';
-import * as Crypto from 'expo-crypto';
 
 const BASE_KEYS = {
   CURRENT_USER: '@fitsa_current_user',
-  STUDENTS: '@fitsa_students',
-  WORKOUT_PLANS: '@fitsa_workout_plans',
-  DIET_PLANS: '@fitsa_diet_plans',
   PROGRESS: '@fitsa_progress',
-  USERS_DB: '@fitsa_users_db',
 };
 
 export const [AppProvider, useApp] = createContextHook(() => {
@@ -26,32 +21,44 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const loadData = useCallback(async () => {
     try {
-      const [storedUser, storedStudents, storedWorkouts, storedDiets, storedProgress] = await Promise.all([
+      const [storedUser, storedProgress] = await Promise.all([
         AsyncStorage.getItem(getKey('CURRENT_USER')),
-        AsyncStorage.getItem(getKey('STUDENTS')),
-        AsyncStorage.getItem(getKey('WORKOUT_PLANS')),
-        AsyncStorage.getItem(getKey('DIET_PLANS')),
         AsyncStorage.getItem(getKey('PROGRESS')),
       ]);
 
       const parsedUser: User | null = storedUser ? JSON.parse(storedUser) : null;
-      const parsedStudents: Student[] = storedStudents ? JSON.parse(storedStudents) : [];
-      const parsedWorkouts: WorkoutPlan[] = storedWorkouts ? JSON.parse(storedWorkouts) : [];
-      const parsedDiets: DietPlan[] = storedDiets ? JSON.parse(storedDiets) : [];
       const parsedProgress: DailyProgress[] = storedProgress ? JSON.parse(storedProgress) : [];
 
       if (parsedUser?.role === 'trainer') {
-        const trainerStudents = parsedStudents.filter(s => s.trainerId === parsedUser.id);
-        setStudents(trainerStudents);
-        const trainerObj: Trainer = { ...(parsedUser as Trainer), clients: trainerStudents };
-        setCurrentUser(trainerObj as unknown as User);
-      } else {
-        setStudents(parsedStudents);
+        const trainerId = parsedUser.id;
+        try {
+          const trainerStudents = await trpcClient.students.listByTrainer.query({ trainerId });
+          setStudents(trainerStudents);
+          const trainerObj: Trainer = { ...(parsedUser as Trainer), clients: trainerStudents };
+          setCurrentUser(trainerObj as unknown as User);
+        } catch (err) {
+          console.error('[AppContext] Failed to fetch students from server:', err);
+          setStudents([]);
+          setCurrentUser(parsedUser);
+        }
+      } else if (parsedUser?.role === 'student') {
         setCurrentUser(parsedUser);
+        try {
+          const [serverWorkouts, serverDiets] = await Promise.all([
+            trpcClient.workouts.listByStudent.query({ studentId: parsedUser.id }),
+            trpcClient.diets.listByStudent.query({ studentId: parsedUser.id }),
+          ]);
+          setWorkoutPlans(serverWorkouts);
+          setDietPlans(serverDiets);
+        } catch (err) {
+          console.error('[AppContext] Failed to fetch student data from server:', err);
+          setWorkoutPlans([]);
+          setDietPlans([]);
+        }
+      } else {
+        setCurrentUser(null);
       }
 
-      setWorkoutPlans(parsedWorkouts);
-      setDietPlans(parsedDiets);
       setProgress(parsedProgress);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -66,29 +73,12 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const registerTrainer = useCallback(async (username: string, password: string, name: string) => {
     try {
-      console.log('[AppContext] Registering trainer:', username);
-      
-      const usersDB = await AsyncStorage.getItem(getKey('USERS_DB'));
-      const users: {id: string; username: string; password: string; name: string; role: 'trainer' | 'student'; trainerId?: string}[] = usersDB ? JSON.parse(usersDB) : [];
-      
-      const existing = users.find(u => u.username.toLowerCase() === username.toLowerCase());
-      if (existing) {
-        throw new Error('Usuario ya existe');
-      }
-
-      const passwordHash = await Crypto.digestStringAsync(
-        Crypto.CryptoDigestAlgorithm.SHA256,
-        password
-      );
-      
-      const id = `trainer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      users.push({ id, username: username.toLowerCase(), password: passwordHash, name, role: 'trainer' });
-      await AsyncStorage.setItem(getKey('USERS_DB'), JSON.stringify(users));
-      
-      const trainer: Trainer = { id, name, role: 'trainer', clients: [], avatar: undefined };
+      console.log('[AppContext] Registering trainer (server):', username);
+      const res = await trpcClient.auth.signupTrainer.mutate({ username, password, name });
+      const trainer: Trainer = { id: res.user.id, name: name, role: 'trainer', clients: [], avatar: res.user.avatar } as Trainer;
       await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(trainer));
       setCurrentUser(trainer);
-      console.log('[AppContext] Trainer registered successfully');
+      console.log('[AppContext] Trainer registered successfully (server)');
     } catch (error) {
       console.error('[AppContext] Registration error:', error);
       throw error;
@@ -97,56 +87,35 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const login = useCallback(async (username: string, password: string) => {
     try {
-      console.log('[AppContext] Logging in:', username);
-      
-      const usersDB = await AsyncStorage.getItem(getKey('USERS_DB'));
-      const users: {id: string; username: string; password: string; name: string; role: 'trainer' | 'student'; trainerId?: string}[] = usersDB ? JSON.parse(usersDB) : [];
-      
-      const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
-      if (!user) {
-        throw new Error('Credenciales inválidas');
-      }
-      
-      const passwordHash = await Crypto.digestStringAsync(
-        Crypto.CryptoDigestAlgorithm.SHA256,
-        password
-      );
-      
-      if (passwordHash !== user.password) {
-        throw new Error('Credenciales inválidas');
-      }
-      
+      console.log('[AppContext] Logging in (server):', username);
+      const res = await trpcClient.auth.login.mutate({ username, password });
+      const user = res.user as User;
+      await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(user));
+      setCurrentUser(user);
+
       if (user.role === 'trainer') {
-        const storedStudents = await AsyncStorage.getItem(getKey('STUDENTS'));
-        const allStudents: Student[] = storedStudents ? JSON.parse(storedStudents) : [];
-        const trainerStudents = allStudents.filter(s => s.trainerId === user.id);
-        const trainer: Trainer = { id: user.id, name: user.name, role: 'trainer', clients: trainerStudents, avatar: undefined };
-        await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(trainer));
-        setCurrentUser(trainer as unknown as User);
-        setStudents(trainerStudents);
-      } else {
-        const student: Student = { id: user.id, name: user.name, role: 'student', trainerId: user.trainerId ?? '', avatar: undefined };
-        await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(student));
-        setCurrentUser(student);
-        
-        const [storedWorkouts, storedDiets] = await Promise.all([
-          AsyncStorage.getItem(getKey('WORKOUT_PLANS')),
-          AsyncStorage.getItem(getKey('DIET_PLANS')),
-        ]);
-        
-        if (storedWorkouts) {
-          const allWorkouts: WorkoutPlan[] = JSON.parse(storedWorkouts);
-          const studentWorkouts = allWorkouts.filter(w => w.studentId === user.id);
-          setWorkoutPlans(studentWorkouts);
+        try {
+          const trainerStudents = await trpcClient.students.listByTrainer.query({ trainerId: user.id });
+          setStudents(trainerStudents);
+        } catch (err) {
+          console.error('[AppContext] Failed to load trainer students after login:', err);
+          setStudents([]);
         }
-        
-        if (storedDiets) {
-          const allDiets: DietPlan[] = JSON.parse(storedDiets);
-          const studentDiets = allDiets.filter(d => d.studentId === user.id);
-          setDietPlans(studentDiets);
+      } else if (user.role === 'student') {
+        try {
+          const [serverWorkouts, serverDiets] = await Promise.all([
+            trpcClient.workouts.listByStudent.query({ studentId: user.id }),
+            trpcClient.diets.listByStudent.query({ studentId: user.id }),
+          ]);
+          setWorkoutPlans(serverWorkouts);
+          setDietPlans(serverDiets);
+        } catch (err) {
+          console.error('[AppContext] Failed to load student plans after login:', err);
+          setWorkoutPlans([]);
+          setDietPlans([]);
         }
       }
-      
+
       console.log('[AppContext] Login successful');
     } catch (error) {
       console.error('[AppContext] Login error:', error);
@@ -169,102 +138,77 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const createStudentAccount = useCallback(async (data: { username: string; password: string; name: string }) => {
     if (!currentUser || currentUser.role !== 'trainer') throw new Error('No autorizado');
-    
-    const usersDB = await AsyncStorage.getItem(getKey('USERS_DB'));
-    const users: {id: string; username: string; password: string; name: string; role: 'trainer' | 'student'; trainerId?: string}[] = usersDB ? JSON.parse(usersDB) : [];
-    
-    const existing = users.find(u => u.username.toLowerCase() === data.username.toLowerCase());
-    if (existing) {
-      throw new Error('Usuario ya existe');
-    }
-    
-    const passwordHash = await Crypto.digestStringAsync(
-      Crypto.CryptoDigestAlgorithm.SHA256,
-      data.password
-    );
-    
-    const id = `student_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    users.push({ 
-      id, 
-      username: data.username.toLowerCase(), 
-      password: passwordHash, 
-      name: data.name, 
-      role: 'student',
-      trainerId: currentUser.id 
-    });
-    await AsyncStorage.setItem(getKey('USERS_DB'), JSON.stringify(users));
-    
-    const student: Student = {
-      id,
-      name: data.name,
-      role: 'student',
+
+    const res = await trpcClient.auth.createStudentAccount.mutate({
       trainerId: currentUser.id,
-      avatar: undefined,
+      username: data.username,
+      password: data.password,
+      name: data.name,
+    });
+
+    const student: Student = {
+      ...res.student,
       loginUsername: data.username.toLowerCase(),
       loginPassword: data.password,
-    };
-    
+    } as Student;
+
     const updated = [...students, student];
-    const existingRaw = await AsyncStorage.getItem(getKey('STUDENTS'));
-    const existingAll: Student[] = existingRaw ? JSON.parse(existingRaw) : [];
-    const merged = existingAll.filter(s => s.trainerId !== currentUser.id).concat(updated);
-    await AsyncStorage.setItem(getKey('STUDENTS'), JSON.stringify(merged));
     setStudents(updated);
-    
-    const updatedTrainer: Trainer = { ...(currentUser as Trainer), clients: updated };
-    await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(updatedTrainer));
-    setCurrentUser(updatedTrainer);
-    
+
+    if (currentUser?.role === 'trainer') {
+      const updatedTrainer: Trainer = { ...(currentUser as Trainer), clients: updated };
+      await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(updatedTrainer));
+      setCurrentUser(updatedTrainer);
+    }
+
+    try { await trpcClient.students.upsert.mutate(student as any); } catch (e) { console.log('[AppContext] Warning: could not persist student extra fields', e); }
+
     return student;
   }, [currentUser, students, getKey]);
 
   const addWorkoutPlan = useCallback(async (plan: WorkoutPlan) => {
     try {
+      await trpcClient.workouts.upsert.mutate(plan);
       const updated = [...workoutPlans, plan];
-      await AsyncStorage.setItem(getKey('WORKOUT_PLANS'), JSON.stringify(updated));
       setWorkoutPlans(updated);
-      try { await trpcClient.workouts.upsert.mutate(plan); } catch {}
     } catch (error) {
       console.error('Error adding workout plan:', error);
     }
-  }, [workoutPlans, getKey]);
+  }, [workoutPlans]);
 
   const updateWorkoutPlan = useCallback(async (planId: string, updates: Partial<WorkoutPlan>) => {
     try {
+      await trpcClient.workouts.update.mutate({ id: planId, updates });
       const updated = workoutPlans.map(plan => 
         plan.id === planId ? { ...plan, ...updates } : plan
       );
-      await AsyncStorage.setItem(getKey('WORKOUT_PLANS'), JSON.stringify(updated));
       setWorkoutPlans(updated);
-      try { await trpcClient.workouts.update.mutate({ id: planId, updates }); } catch {}
     } catch (error) {
       console.error('Error updating workout plan:', error);
     }
-  }, [workoutPlans, getKey]);
+  }, [workoutPlans]);
 
   const addDietPlan = useCallback(async (plan: DietPlan) => {
     try {
+      await trpcClient.diets.upsert.mutate(plan);
       const updated = [...dietPlans, plan];
-      await AsyncStorage.setItem(getKey('DIET_PLANS'), JSON.stringify(updated));
       setDietPlans(updated);
-      try { await trpcClient.diets.upsert.mutate(plan); } catch {}
     } catch (error) {
       console.error('Error adding diet plan:', error);
     }
-  }, [dietPlans, getKey]);
+  }, [dietPlans]);
 
   const updateDietPlan = useCallback(async (planId: string, updates: Partial<DietPlan>) => {
     try {
+      await trpcClient.diets.update.mutate({ id: planId, updates });
       const updated = dietPlans.map(plan => 
         plan.id === planId ? { ...plan, ...updates } : plan
       );
-      await AsyncStorage.setItem(getKey('DIET_PLANS'), JSON.stringify(updated));
       setDietPlans(updated);
-      try { await trpcClient.diets.update.mutate({ id: planId, updates }); } catch {}
     } catch (error) {
       console.error('Error updating diet plan:', error);
     }
-  }, [dietPlans, getKey]);
+  }, [dietPlans]);
 
   const updateProgress = useCallback(async (dailyProgress: DailyProgress) => {
     try {
@@ -305,10 +249,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const addStudent = useCallback(async (student: Student) => {
     try {
+      await trpcClient.students.upsert.mutate(student as any);
       const updated = [...students, student];
-      await AsyncStorage.setItem(getKey('STUDENTS'), JSON.stringify(updated));
       setStudents(updated);
-      try { await trpcClient.students.upsert.mutate(student as any); } catch {}
       
       if (currentUser?.role === 'trainer') {
         const updatedTrainer: Trainer = { 
@@ -321,20 +264,16 @@ export const [AppProvider, useApp] = createContextHook(() => {
     } catch (error) {
       console.error('Error adding student:', error);
     }
-  }, [students, currentUser, getKey]);
+  }, [students, currentUser]);
 
   const updateStudent = useCallback(async (studentId: string, updates: Partial<Student>) => {
     try {
       const updated = students.map(s => 
         s.id === studentId ? { ...s, ...updates } : s
       );
-      const existingRaw = await AsyncStorage.getItem(getKey('STUDENTS'));
-      const existingAll: Student[] = existingRaw ? JSON.parse(existingRaw) : [];
-      const merged = existingAll.filter(s => s.trainerId !== (currentUser as Trainer).id).concat(updated);
-      await AsyncStorage.setItem(getKey('STUDENTS'), JSON.stringify(merged));
-      setStudents(updated);
       const found = updated.find(s => s.id === studentId);
-      if (found) { try { await trpcClient.students.upsert.mutate(found as any); } catch {} }
+      if (found) { await trpcClient.students.upsert.mutate(found as any); }
+      setStudents(updated);
       
       if (currentUser?.role === 'trainer') {
         const updatedTrainer: Trainer = { 
@@ -347,17 +286,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
     } catch (error) {
       console.error('Error updating student:', error);
     }
-  }, [students, currentUser, getKey]);
+  }, [students, currentUser]);
 
   const deleteStudent = useCallback(async (studentId: string) => {
     try {
+      await trpcClient.students.remove.mutate({ id: studentId });
       const updated = students.filter(s => s.id !== studentId);
-      const existingRaw = await AsyncStorage.getItem(getKey('STUDENTS'));
-      const existingAll: Student[] = existingRaw ? JSON.parse(existingRaw) : [];
-      const merged = existingAll.filter(s => s.trainerId !== (currentUser as Trainer).id).concat(updated);
-      await AsyncStorage.setItem(getKey('STUDENTS'), JSON.stringify(merged));
       setStudents(updated);
-      try { await trpcClient.students.remove.mutate({ id: studentId }); } catch {}
       
       if (currentUser?.role === 'trainer') {
         const updatedTrainer: Trainer = { 
@@ -370,29 +305,27 @@ export const [AppProvider, useApp] = createContextHook(() => {
     } catch (error) {
       console.error('Error deleting student:', error);
     }
-  }, [students, currentUser, getKey]);
+  }, [students, currentUser]);
 
   const deleteWorkoutPlan = useCallback(async (planId: string) => {
     try {
+      await trpcClient.workouts.remove.mutate({ id: planId });
       const updated = workoutPlans.filter(p => p.id !== planId);
-      await AsyncStorage.setItem(getKey('WORKOUT_PLANS'), JSON.stringify(updated));
       setWorkoutPlans(updated);
-      try { await trpcClient.workouts.remove.mutate({ id: planId }); } catch {}
     } catch (error) {
       console.error('Error deleting workout plan:', error);
     }
-  }, [workoutPlans, getKey]);
+  }, [workoutPlans]);
 
   const deleteDietPlan = useCallback(async (planId: string) => {
     try {
+      await trpcClient.diets.remove.mutate({ id: planId });
       const updated = dietPlans.filter(p => p.id !== planId);
-      await AsyncStorage.setItem(getKey('DIET_PLANS'), JSON.stringify(updated));
       setDietPlans(updated);
-      try { await trpcClient.diets.remove.mutate({ id: planId }); } catch {}
     } catch (error) {
       console.error('Error deleting diet plan:', error);
     }
-  }, [dietPlans, getKey]);
+  }, [dietPlans]);
 
   return useMemo(() => ({
     currentUser,
