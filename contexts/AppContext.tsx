@@ -34,11 +34,25 @@ export const [AppProvider, useApp] = createContextHook(() => {
         AsyncStorage.getItem(getKey('PROGRESS')),
       ]);
 
-      if (storedUser) setCurrentUser(JSON.parse(storedUser));
-      if (storedStudents) setStudents(JSON.parse(storedStudents));
-      if (storedWorkouts) setWorkoutPlans(JSON.parse(storedWorkouts));
-      if (storedDiets) setDietPlans(JSON.parse(storedDiets));
-      if (storedProgress) setProgress(JSON.parse(storedProgress));
+      const parsedUser: User | null = storedUser ? JSON.parse(storedUser) : null;
+      const parsedStudents: Student[] = storedStudents ? JSON.parse(storedStudents) : [];
+      const parsedWorkouts: WorkoutPlan[] = storedWorkouts ? JSON.parse(storedWorkouts) : [];
+      const parsedDiets: DietPlan[] = storedDiets ? JSON.parse(storedDiets) : [];
+      const parsedProgress: DailyProgress[] = storedProgress ? JSON.parse(storedProgress) : [];
+
+      if (parsedUser?.role === 'trainer') {
+        const trainerStudents = parsedStudents.filter(s => s.trainerId === parsedUser.id);
+        setStudents(trainerStudents);
+        const trainerObj: Trainer = { ...(parsedUser as Trainer), clients: trainerStudents };
+        setCurrentUser(trainerObj as unknown as User);
+      } else {
+        setStudents(parsedStudents);
+        setCurrentUser(parsedUser);
+      }
+
+      setWorkoutPlans(parsedWorkouts);
+      setDietPlans(parsedDiets);
+      setProgress(parsedProgress);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -103,16 +117,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
       }
       
       if (user.role === 'trainer') {
-        const trainer: Trainer = { id: user.id, name: user.name, role: 'trainer', clients: [], avatar: undefined };
-        await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(trainer));
-        setCurrentUser(trainer);
-        
         const storedStudents = await AsyncStorage.getItem(getKey('STUDENTS'));
-        if (storedStudents) {
-          const allStudents: Student[] = JSON.parse(storedStudents);
-          const trainerStudents = allStudents.filter(s => s.trainerId === user.id);
-          setStudents(trainerStudents);
-        }
+        const allStudents: Student[] = storedStudents ? JSON.parse(storedStudents) : [];
+        const trainerStudents = allStudents.filter(s => s.trainerId === user.id);
+        const trainer: Trainer = { id: user.id, name: user.name, role: 'trainer', clients: trainerStudents, avatar: undefined };
+        await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(trainer));
+        setCurrentUser(trainer as unknown as User);
+        setStudents(trainerStudents);
       } else {
         const student: Student = { id: user.id, name: user.name, role: 'student', trainerId: user.trainerId ?? '', avatar: undefined };
         await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(student));
@@ -194,7 +205,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
     };
     
     const updated = [...students, student];
-    await AsyncStorage.setItem(getKey('STUDENTS'), JSON.stringify(updated));
+    const existingRaw = await AsyncStorage.getItem(getKey('STUDENTS'));
+    const existingAll: Student[] = existingRaw ? JSON.parse(existingRaw) : [];
+    const merged = existingAll.filter(s => s.trainerId !== currentUser.id).concat(updated);
+    await AsyncStorage.setItem(getKey('STUDENTS'), JSON.stringify(merged));
     setStudents(updated);
     
     const updatedTrainer: Trainer = { ...(currentUser as Trainer), clients: updated };
@@ -302,7 +316,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
           clients: updated 
         };
         await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(updatedTrainer));
-        setCurrentUser(updatedTrainer);
+        setCurrentUser(updatedTrainer as unknown as User);
       }
     } catch (error) {
       console.error('Error adding student:', error);
@@ -314,7 +328,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
       const updated = students.map(s => 
         s.id === studentId ? { ...s, ...updates } : s
       );
-      await AsyncStorage.setItem(getKey('STUDENTS'), JSON.stringify(updated));
+      const existingRaw = await AsyncStorage.getItem(getKey('STUDENTS'));
+      const existingAll: Student[] = existingRaw ? JSON.parse(existingRaw) : [];
+      const merged = existingAll.filter(s => s.trainerId !== (currentUser as Trainer).id).concat(updated);
+      await AsyncStorage.setItem(getKey('STUDENTS'), JSON.stringify(merged));
       setStudents(updated);
       const found = updated.find(s => s.id === studentId);
       if (found) { try { await trpcClient.students.upsert.mutate(found as any); } catch {} }
@@ -325,7 +342,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
           clients: updated 
         };
         await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(updatedTrainer));
-        setCurrentUser(updatedTrainer);
+        setCurrentUser(updatedTrainer as unknown as User);
       }
     } catch (error) {
       console.error('Error updating student:', error);
@@ -335,7 +352,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const deleteStudent = useCallback(async (studentId: string) => {
     try {
       const updated = students.filter(s => s.id !== studentId);
-      await AsyncStorage.setItem(getKey('STUDENTS'), JSON.stringify(updated));
+      const existingRaw = await AsyncStorage.getItem(getKey('STUDENTS'));
+      const existingAll: Student[] = existingRaw ? JSON.parse(existingRaw) : [];
+      const merged = existingAll.filter(s => s.trainerId !== (currentUser as Trainer).id).concat(updated);
+      await AsyncStorage.setItem(getKey('STUDENTS'), JSON.stringify(merged));
       setStudents(updated);
       try { await trpcClient.students.remove.mutate({ id: studentId }); } catch {}
       
@@ -345,7 +365,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
           clients: updated 
         };
         await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(updatedTrainer));
-        setCurrentUser(updatedTrainer);
+        setCurrentUser(updatedTrainer as unknown as User);
       }
     } catch (error) {
       console.error('Error deleting student:', error);
