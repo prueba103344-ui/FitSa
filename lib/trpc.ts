@@ -49,21 +49,23 @@ export const trpcClient = trpc.createClient({
             },
           });
           
+          const contentType = response.headers.get('content-type') ?? '';
+          if (contentType.includes('text/html') || contentType.includes('text/plain')) {
+            const preview = await response.clone().text();
+            console.error('[TRPC] Received non-JSON response. Status:', response.status);
+            console.error('[TRPC] Response body (first 500):', preview.slice(0, 500));
+            console.error('[TRPC] URL:', url);
+            throw new Error('Backend no disponible. Verifica la URL del backend o que esté ejecutándose.');
+          }
+
           if (!response.ok) {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('text/html')) {
-              console.error('[TRPC] Received HTML response instead of JSON. This usually means:');
-              console.error('  1. Backend is not running');
-              console.error('  2. Backend URL is incorrect');
-              console.error('  3. Endpoint does not exist');
-              console.error('[TRPC] Current URL:', url);
-              throw new Error('Backend no disponible. Por favor, reinicia la aplicación usando el comando "bun start".');
-            }
+            console.error('[TRPC] HTTP error', response.status, response.statusText);
+            throw new Error('Backend no disponible. Por favor, reinicia la aplicación o contacta soporte.');
           }
           
           return response;
         } catch (error) {
-          if (error instanceof TypeError && error.message.includes('fetch')) {
+          if (error instanceof TypeError && (error.message.includes('fetch') || error.message.includes('NetworkError'))) {
             console.error('[TRPC] Network error - cannot connect to backend:', error);
             throw new Error('No se pudo conectar al servidor. Por favor, verifica que hayas iniciado la aplicación con "bun start".');
           }
