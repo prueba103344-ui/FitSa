@@ -3,6 +3,7 @@ import { httpLink } from "@trpc/client";
 import type { AppRouter } from "@/backend/trpc/app-router";
 import superjson from "superjson";
 import { getAccessToken } from "@/lib/supabase";
+import { Platform } from "react-native";
 
 export const trpc = createTRPCReact<AppRouter>();
 
@@ -12,16 +13,19 @@ const getBaseUrl = () => {
     console.log('[TRPC] Using base URL:', envUrl);
     return envUrl;
   }
-  console.error(
-    "[TRPC] No base URL found in EXPO_PUBLIC_RORK_API_BASE_URL. Please restart the app using 'bun start' command."
-  );
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin) {
+    const origin = window.location.origin;
+    console.log('[TRPC] Falling back to same-origin base URL on web:', origin);
+    return origin;
+  }
+  console.warn("[TRPC] No base URL configured. tRPC calls will be disabled until backend is available.");
   return "";
 };
 
 const getUrlSafe = () => {
   const base = getBaseUrl();
   if (!base) {
-    return "http://localhost:3000/api/trpc";
+    return "http://127.0.0.1:3000/api/trpc";
   }
   return `${base}/api/trpc`;
 };
@@ -35,8 +39,8 @@ export const trpcClient = trpc.createClient({
         try {
           const baseUrl = getBaseUrl();
           if (!baseUrl) {
-            console.error('[TRPC] Backend not configured. Please restart the app using "bun start" command.');
-            throw new Error('Backend no configurado. Por favor, reinicia la aplicación usando el comando "bun start".');
+            console.warn('[TRPC] Skipping request because backend base URL is not set');
+            throw new Error('Backend no disponible.');
           }
 
           const token = await getAccessToken();

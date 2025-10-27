@@ -96,15 +96,30 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const registerTrainer = useCallback(async (username: string, password: string, name: string) => {
     try {
-      console.log('[AppContext] Registering trainer via Supabase with username:', username);
-      const email = username.includes('@') ? username : `${username}@fit.local`;
-      await signUp({ email, password, data: { role: 'trainer', name } });
-      const session = await signInWithPassword({ email, password });
-      const userId = session.user?.id ?? (session as any).user?.id ?? (session as any).id;
+      const u = username.trim();
+      const p = password.trim();
+      const n = name.trim();
+      if (u.length < 3) throw new Error('El usuario debe tener al menos 3 caracteres');
+      if (p.length < 6) throw new Error('La contraseña debe tener al menos 6 caracteres');
+      if (n.length < 2) throw new Error('Ingresa tu nombre');
+      console.log('[AppContext] Registering trainer via Supabase with username:', u);
+      const email = u.includes('@') ? u : `${u}@fit.local`;
+      await signUp({ email, password: p, data: { role: 'trainer', name: n } });
+      let session = null as any;
+      try {
+        session = await signInWithPassword({ email, password: p });
+      } catch (e: any) {
+        const msg = String(e?.message ?? e);
+        if (msg.toLowerCase().includes('confirm') || msg.toLowerCase().includes('verify')) {
+          throw new Error('Revisa tu correo para confirmar la cuenta y vuelve a intentarlo.');
+        }
+        throw e;
+      }
+      const userId = session?.user?.id ?? session?.id;
       if (!userId) throw new Error('No se pudo obtener el usuario de Supabase');
-      const profile: ProfileRow = { id: userId, role: 'trainer', name, avatar: null };
+      const profile: ProfileRow = { id: userId, role: 'trainer', name: n, avatar: null };
       await supaDB.upsertProfile(profile);
-      const trainer: Trainer = { id: userId, name, role: 'trainer', clients: [], avatar: undefined };
+      const trainer: Trainer = { id: userId, name: n, role: 'trainer', clients: [], avatar: undefined };
       await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(trainer));
       setCurrentUser(trainer);
     } catch (error: any) {
@@ -115,11 +130,15 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const login = useCallback(async (username: string, password: string) => {
     try {
-      console.log('[AppContext] Logging in via Supabase with username:', username);
-      const email = username.includes('@') ? username : `${username}@fit.local`;
-      await signInWithPassword({ email, password });
+      const u = username.trim();
+      const p = password.trim();
+      if (u.length < 3) throw new Error('Usuario inválido');
+      if (p.length < 6) throw new Error('La contraseña debe tener al menos 6 caracteres');
+      console.log('[AppContext] Logging in via Supabase with username:', u);
+      const email = u.includes('@') ? u : `${u}@fit.local`;
+      await signInWithPassword({ email, password: p });
       const session = await getSession();
-      const uid = session?.user?.id;
+      const uid = (session as any)?.user?.id ?? (session as any)?.id;
       if (!uid) throw new Error('No se pudo iniciar sesión');
       const profile = await supaDB.getProfile(uid);
       if (!profile) throw new Error('Perfil no encontrado');
@@ -130,6 +149,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
       setCurrentUser(user);
     } catch (error: any) {
       console.error('[AppContext] Login error:', error?.message || error);
+      const msg = String(error?.message ?? error);
+      if (msg.toLowerCase().includes('invalid') || msg.toLowerCase().includes('email')) {
+        throw new Error('Credenciales inválidas o email sin confirmar');
+      }
       throw new Error(error?.message ?? 'No se pudo iniciar sesión');
     }
   }, [getKey]);
