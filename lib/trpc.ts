@@ -8,27 +8,28 @@ import { Platform } from "react-native";
 export const trpc = createTRPCReact<AppRouter>();
 
 const getBaseUrl = () => {
-  const envUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
-  if (envUrl && typeof envUrl === "string" && envUrl.length > 0) {
-    console.log('[TRPC] Using base URL:', envUrl);
-    return envUrl;
+  const candidates = [
+    process.env.EXPO_PUBLIC_RORK_API_BASE_URL,
+    process.env.EXPO_PUBLIC_BACKEND_URL,
+    process.env.EXPO_PUBLIC_RORK_URL,
+  ].filter((v): v is string => Boolean(v && typeof v === 'string' && v.length > 0));
+
+  if (candidates.length > 0) {
+    const chosen = candidates[0]!;
+    console.log('[TRPC] Using base URL from env:', chosen);
+    return chosen;
   }
-  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin) {
-    const origin = window.location.origin;
-    console.log('[TRPC] Falling back to same-origin base URL on web:', origin);
-    return origin;
+
+  if (Platform.OS !== 'web') {
+    console.log('[TRPC] Using default dev URL for native');
+    return 'http://127.0.0.1:3000';
   }
-  console.warn("[TRPC] No base URL configured. tRPC calls will be disabled until backend is available.");
-  return "";
+
+  console.warn('[TRPC] No backend URL env set. Avoiding same-origin fallback on web to prevent 404 HTML. Using default dev URL.');
+  return 'http://127.0.0.1:3000';
 };
 
-const getUrlSafe = () => {
-  const base = getBaseUrl();
-  if (!base) {
-    return "http://127.0.0.1:3000/api/trpc";
-  }
-  return `${base}/api/trpc`;
-};
+const getUrlSafe = () => `${getBaseUrl()}/api/trpc`;
 
 export const trpcClient = trpc.createClient({
   links: [
@@ -37,12 +38,6 @@ export const trpcClient = trpc.createClient({
       transformer: superjson,
       fetch: async (url, options) => {
         try {
-          const baseUrl = getBaseUrl();
-          if (!baseUrl) {
-            console.warn('[TRPC] Skipping request because backend base URL is not set');
-            throw new Error('Backend no disponible.');
-          }
-
           const token = await getAccessToken();
           const response = await fetch(url, {
             ...options,
@@ -52,7 +47,7 @@ export const trpcClient = trpc.createClient({
               ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
           });
-          
+
           const contentType = response.headers.get('content-type') ?? '';
           if (contentType.includes('text/html') || contentType.includes('text/plain')) {
             const preview = await response.clone().text();
@@ -66,14 +61,14 @@ export const trpcClient = trpc.createClient({
             console.error('[TRPC] HTTP error', response.status, response.statusText);
             throw new Error('Backend no disponible. Por favor, reinicia la aplicación o contacta soporte.');
           }
-          
+
           return response;
         } catch (error) {
-          if (error instanceof TypeError && (error.message.includes('fetch') || error.message.includes('NetworkError'))) {
-            console.error('[TRPC] Network error - cannot connect to backend:', error);
-            throw new Error('No se pudo conectar al servidor. Por favor, verifica que hayas iniciado la aplicación con "bun start".');
+          const err = error as Error;
+          if (err.name === 'TypeError') {
+            console.error('[TRPC] Network/Fetch error:', err.message);
           }
-          throw error as Error;
+          throw err;
         }
       },
     }),
