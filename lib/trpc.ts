@@ -2,6 +2,7 @@ import { createTRPCReact } from "@trpc/react-query";
 import { httpLink } from "@trpc/client";
 import type { AppRouter } from "@/backend/trpc/app-router";
 import superjson from "superjson";
+import { getAccessToken } from "@/lib/supabase";
 
 export const trpc = createTRPCReact<AppRouter>();
 
@@ -17,8 +18,6 @@ const getBaseUrl = () => {
   throw new Error("Missing EXPO_PUBLIC_RORK_API_BASE_URL");
 };
 
-
-
 export const trpcClient = trpc.createClient({
   links: [
     httpLink({
@@ -26,11 +25,13 @@ export const trpcClient = trpc.createClient({
       transformer: superjson,
       fetch: async (url, options) => {
         try {
+          const token = await getAccessToken();
           const response = await fetch(url, {
             ...options,
             headers: {
               ...options?.headers,
               'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
           });
           
@@ -46,7 +47,7 @@ export const trpcClient = trpc.createClient({
           if (error instanceof TypeError && error.message.includes('fetch')) {
             throw new Error('No se pudo conectar al servidor. Verifica tu conexión a internet.');
           }
-          throw error;
+          throw error as Error;
         }
       },
     }),
