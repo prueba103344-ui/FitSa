@@ -28,6 +28,8 @@ function RootLayoutNav() {
 export default function RootLayout() {
   useEffect(() => {
     SplashScreen.hideAsync();
+    console.log('[App] EXPO_PUBLIC_RORK_API_BASE_URL:', process.env.EXPO_PUBLIC_RORK_API_BASE_URL);
+    console.log('[App] Full tRPC URL:', `${process.env.EXPO_PUBLIC_RORK_API_BASE_URL}/api/trpc`);
   }, []);
 
   return (
