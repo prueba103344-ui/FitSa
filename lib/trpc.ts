@@ -13,18 +13,32 @@ const getBaseUrl = () => {
     return envUrl;
   }
   console.error(
-    "[TRPC] No base URL found in EXPO_PUBLIC_RORK_API_BASE_URL; API calls will fail. Please start with the provided dev script."
+    "[TRPC] No base URL found in EXPO_PUBLIC_RORK_API_BASE_URL. Please restart the app using 'bun start' command."
   );
-  throw new Error("Missing EXPO_PUBLIC_RORK_API_BASE_URL");
+  return "";
+};
+
+const getUrlSafe = () => {
+  const base = getBaseUrl();
+  if (!base) {
+    return "http://localhost:3000/api/trpc";
+  }
+  return `${base}/api/trpc`;
 };
 
 export const trpcClient = trpc.createClient({
   links: [
     httpLink({
-      url: `${getBaseUrl()}/api/trpc`,
+      url: getUrlSafe(),
       transformer: superjson,
       fetch: async (url, options) => {
         try {
+          const baseUrl = getBaseUrl();
+          if (!baseUrl) {
+            console.error('[TRPC] Backend not configured. Please restart the app using "bun start" command.');
+            throw new Error('Backend no configurado. Por favor, reinicia la aplicación usando el comando "bun start".');
+          }
+
           const token = await getAccessToken();
           const response = await fetch(url, {
             ...options,
@@ -38,14 +52,20 @@ export const trpcClient = trpc.createClient({
           if (!response.ok) {
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('text/html')) {
-              throw new Error(`Backend no disponible. Por favor, reinicia la aplicación o contacta soporte.`);
+              console.error('[TRPC] Received HTML response instead of JSON. This usually means:');
+              console.error('  1. Backend is not running');
+              console.error('  2. Backend URL is incorrect');
+              console.error('  3. Endpoint does not exist');
+              console.error('[TRPC] Current URL:', url);
+              throw new Error('Backend no disponible. Por favor, reinicia la aplicación usando el comando "bun start".');
             }
           }
           
           return response;
         } catch (error) {
           if (error instanceof TypeError && error.message.includes('fetch')) {
-            throw new Error('No se pudo conectar al servidor. Verifica tu conexión a internet.');
+            console.error('[TRPC] Network error - cannot connect to backend:', error);
+            throw new Error('No se pudo conectar al servidor. Por favor, verifica que hayas iniciado la aplicación con "bun start".');
           }
           throw error as Error;
         }
