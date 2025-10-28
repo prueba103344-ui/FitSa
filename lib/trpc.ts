@@ -6,19 +6,22 @@ import superjson from "superjson";
 export const trpc = createTRPCReact<AppRouter>();
 
 const getBaseUrl = () => {
-  if (process.env.EXPO_PUBLIC_RORK_API_BASE_URL) {
-    return process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
+  const explicit =
+    process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
+  if (explicit) {
+    console.log("[TRPC] Using explicit EXPO_PUBLIC_API_URL:", explicit);
+    return explicit;
   }
-  
-  if (typeof window !== 'undefined') {
+
+  if (typeof window !== "undefined" && window.location?.origin) {
     const url = window.location.origin;
-    console.log('[TRPC] Using window origin as base URL:', url);
+    console.log("[TRPC] Using window origin as base URL:", url);
     return url;
   }
 
-  console.error('[TRPC] No base URL found');
+  console.error("[TRPC] No base URL found");
   throw new Error(
-    "No base url found, please set EXPO_PUBLIC_RORK_API_BASE_URL"
+    "No base URL found. Set EXPO_PUBLIC_API_URL to your backend origin (e.g. https://api.example.com)"
   );
 };
 
