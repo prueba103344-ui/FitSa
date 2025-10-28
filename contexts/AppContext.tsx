@@ -74,21 +74,35 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const registerTrainer = useCallback(async (username: string, password: string, name: string) => {
     try {
       console.log('[AppContext] Registering trainer (server):', username);
-      const res = await trpcClient.auth.signupTrainer.mutate({ username, password, name });
-      const trainer: Trainer = { id: res.user.id, name: name, role: 'trainer', clients: [], avatar: res.user.avatar } as Trainer;
+      const res = await trpcClient.auth.signupTrainer.mutate({ 
+        username: username.toLowerCase().trim(), 
+        password, 
+        name: name.trim() 
+      });
+      const trainer: Trainer = { 
+        id: res.user.id, 
+        name: res.user.name, 
+        role: 'trainer', 
+        clients: [] 
+      };
       await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(trainer));
       setCurrentUser(trainer);
-      console.log('[AppContext] Trainer registered successfully (server)');
-    } catch (error) {
+      setStudents([]);
+      console.log('[AppContext] Trainer registered successfully (server)', trainer.id);
+    } catch (error: any) {
       console.error('[AppContext] Registration error:', error);
-      throw error;
+      const message = error?.message || error?.toString() || 'Error al registrar';
+      throw new Error(message);
     }
   }, [getKey]);
 
   const login = useCallback(async (username: string, password: string) => {
     try {
       console.log('[AppContext] Logging in (server):', username);
-      const res = await trpcClient.auth.login.mutate({ username, password });
+      const res = await trpcClient.auth.login.mutate({ 
+        username: username.toLowerCase().trim(), 
+        password 
+      });
       const user = res.user as User;
       await AsyncStorage.setItem(getKey('CURRENT_USER'), JSON.stringify(user));
       setCurrentUser(user);
@@ -97,6 +111,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
         try {
           const trainerStudents = await trpcClient.students.listByTrainer.query({ trainerId: user.id });
           setStudents(trainerStudents);
+          console.log('[AppContext] Loaded', trainerStudents.length, 'students for trainer');
         } catch (err) {
           console.error('[AppContext] Failed to load trainer students after login:', err);
           setStudents([]);
@@ -109,6 +124,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
           ]);
           setWorkoutPlans(serverWorkouts);
           setDietPlans(serverDiets);
+          console.log('[AppContext] Loaded plans for student');
         } catch (err) {
           console.error('[AppContext] Failed to load student plans after login:', err);
           setWorkoutPlans([]);
@@ -116,10 +132,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
         }
       }
 
-      console.log('[AppContext] Login successful');
-    } catch (error) {
+      console.log('[AppContext] Login successful for user:', user.id);
+    } catch (error: any) {
       console.error('[AppContext] Login error:', error);
-      throw error;
+      const message = error?.message || error?.toString() || 'Error al iniciar sesión';
+      throw new Error(message);
     }
   }, [getKey]);
 
@@ -139,18 +156,15 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const createStudentAccount = useCallback(async (data: { username: string; password: string; name: string }) => {
     if (!currentUser || currentUser.role !== 'trainer') throw new Error('No autorizado');
 
+    console.log('[AppContext] Creating student account:', data.username);
     const res = await trpcClient.auth.createStudentAccount.mutate({
       trainerId: currentUser.id,
-      username: data.username,
+      username: data.username.toLowerCase().trim(),
       password: data.password,
-      name: data.name,
+      name: data.name.trim(),
     });
 
-    const student: Student = {
-      ...res.student,
-      loginUsername: data.username.toLowerCase(),
-      loginPassword: data.password,
-    } as Student;
+    const student: Student = res.student;
 
     const updated = [...students, student];
     setStudents(updated);
@@ -161,8 +175,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       setCurrentUser(updatedTrainer);
     }
 
-    try { await trpcClient.students.upsert.mutate(student as any); } catch (e) { console.log('[AppContext] Warning: could not persist student extra fields', e); }
-
+    console.log('[AppContext] Student account created successfully:', student.id);
     return student;
   }, [currentUser, students, getKey]);
 
@@ -264,7 +277,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     } catch (error) {
       console.error('Error adding student:', error);
     }
-  }, [students, currentUser]);
+  }, [students, currentUser, getKey]);
 
   const updateStudent = useCallback(async (studentId: string, updates: Partial<Student>) => {
     try {
@@ -286,7 +299,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     } catch (error) {
       console.error('Error updating student:', error);
     }
-  }, [students, currentUser]);
+  }, [students, currentUser, getKey]);
 
   const deleteStudent = useCallback(async (studentId: string) => {
     try {
@@ -305,7 +318,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     } catch (error) {
       console.error('Error deleting student:', error);
     }
-  }, [students, currentUser]);
+  }, [students, currentUser, getKey]);
 
   const deleteWorkoutPlan = useCallback(async (planId: string) => {
     try {
