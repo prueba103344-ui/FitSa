@@ -9,13 +9,14 @@ import {
   Animated,
   TextInput,
   Modal,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { colors } from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { Student } from '@/types';
-import { ChevronLeft, ChevronRight, TrendingUp, ChevronDown, ChevronUp, Check, Sparkles, Edit2, X } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, TrendingUp, ChevronDown, ChevronUp, Check, Sparkles, Edit2, X, PlayCircle } from 'lucide-react-native';
 
 export default function StudentTrainingScreen() {
   const { currentUser, workoutPlans, updateWorkoutPlan } = useApp();
@@ -303,6 +304,18 @@ export default function StudentTrainingScreen() {
                       </View>
                       
                       <View style={styles.exerciseContent}>
+                        <View style={styles.videoRow}>
+                          {exercise.videoUrl ? (
+                            <TouchableOpacity
+                              style={styles.videoButton}
+                              onPress={() => exercise.videoUrl && Linking.openURL(exercise.videoUrl)}
+                              testID={`open-video-${exercise.id}`}
+                            >
+                              <PlayCircle size={18} color={colors.neon} />
+                              <Text style={styles.videoButtonText}>Ver video</Text>
+                            </TouchableOpacity>
+                          ) : null}
+                        </View>
                         <TouchableOpacity 
                           style={styles.expandButton}
                           onPress={() => toggleExercise(exercise.id)}
@@ -674,6 +687,26 @@ const styles = StyleSheet.create({
   },
   exerciseContent: {
     padding: 20,
+  },
+  videoRow: {
+    marginBottom: 8,
+    flexDirection: 'row',
+  },
+  videoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'flex-start',
+    backgroundColor: colors.cardLight,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  videoButtonText: {
+    color: colors.neon,
+    fontWeight: '800' as const,
   },
   expandButton: {
     flexDirection: 'row',

@@ -41,6 +41,7 @@ export interface Exercise {
   sets: ExerciseSet[];
   notes?: string;
   imageUrl?: string;
+  videoUrl?: string;
 }
 
 export interface WorkoutPlan {

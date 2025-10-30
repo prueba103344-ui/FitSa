@@ -1,12 +1,13 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { Plus, X, Trash2, Dumbbell, ImageUp } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { WorkoutPlan, Exercise, ExerciseSet, Trainer } from '@/types';
-import { Edit2 } from 'lucide-react-native';
+import { Edit2, PlayCircle } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { getDefaultExerciseVideo } from '@/constants/exerciseVideos';
 
 export default function TrainerWorkoutsScreen() {
   const { currentUser, workoutPlans, students, addWorkoutPlan, updateWorkoutPlan, deleteWorkoutPlan } = useApp();
@@ -19,6 +20,7 @@ export default function TrainerWorkoutsScreen() {
   const [currentExerciseImage, setCurrentExerciseImage] = useState<string>('');
   const [picking, setPicking] = useState<boolean>(false);
   const [currentSets, setCurrentSets] = useState<ExerciseSet[]>([]);
+  const guessedVideo = getDefaultExerciseVideo(currentExercise);
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
   const [editingPlan, setEditingPlan] = useState<WorkoutPlan | null>(null);
 
@@ -73,6 +75,7 @@ export default function TrainerWorkoutsScreen() {
       name: currentExercise,
       sets: currentSets,
       imageUrl: currentExerciseImage || undefined,
+      videoUrl: guessedVideo || undefined,
     };
 
     setExercises([...exercises, newExercise]);
@@ -336,6 +339,16 @@ export default function TrainerWorkoutsScreen() {
                   <Image source={{ uri: currentExerciseImage }} style={{ width: '100%', height: 140, borderRadius: 12, marginTop: 8 }} />
                 ) : null}
 
+                {guessedVideo ? (
+                  <View style={styles.videoHint}>
+                    <PlayCircle color={colors.primary} size={18} />
+                    <Text style={styles.videoHintText}>Video predeterminado listo</Text>
+                    <TouchableOpacity onPress={() => Linking.openURL(guessedVideo)} testID="preview-default-video">
+                      <Text style={styles.videoHintLink}>Ver</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+
                 <TouchableOpacity style={styles.addExerciseButton} onPress={pickExerciseImage} disabled={picking}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <ImageUp color={colors.primary} size={18} />
@@ -584,6 +597,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.primary,
     fontWeight: '600' as const,
+  },
+  videoHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.cardLight,
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  videoHintText: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontWeight: '600' as const,
+  },
+  videoHintLink: {
+    fontSize: 13,
+    color: colors.primary,
+    fontWeight: '800' as const,
   },
   addExerciseButton: {
     backgroundColor: colors.primary + '20',
