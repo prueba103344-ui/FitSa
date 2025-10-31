@@ -19,9 +19,13 @@ import { useApp } from '@/contexts/AppContext';
 import colors from '@/constants/colors';
 import { ArrowLeft, Plus, X, Trash2, Sparkles, ImageUp } from 'lucide-react-native';
 import { Meal, Ingredient, Direction, Food } from '@/types';
-import { generateText } from '@rork/toolkit-sdk';
+import { generateObject } from '@rork/toolkit-sdk';
 import KeyboardAware from '@/components/KeyboardAware';
 import * as ImagePicker from 'expo-image-picker';
+import { z } from 'zod';
+import { findNutritionItem, NutritionItem } from '@/constants/nutrition';
+
+ type MacroTotals = { calories: number; protein: number; carbs: number; fat: number };
 
 export default function CreateMealScreen() {
   const router = useRouter();
@@ -85,11 +89,82 @@ export default function CreateMealScreen() {
   const removeDirection = (index: number) => {
     const updated = directions
       .filter((_, i) => i !== index)
-      .map((dir, i) => ({ ...dir, step: i + 1 }));
+      .map((dir, i) => ({ ...dir, step: i + 1 } as Direction));
     setDirections(updated);
   };
 
-  const generateMacrosWithAI = async () => {
+  function coerceNumber(n: unknown): number | null {
+    const parsed = typeof n === 'number' ? n : parseFloat(String(n));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function normalizeUnit(u: string | undefined): 'g' | 'ml' | 'unidad' {
+    const key = (u ?? '').trim().toLowerCase();
+    if (['g', 'gramo', 'gramos'].includes(key)) return 'g';
+    if (['ml', 'mililitro', 'mililitros'].includes(key)) return 'ml';
+    if (['unidad', 'unidades', 'u', 'pz', 'piece', 'pieza', 'pieces'].includes(key)) return 'unidad';
+    if (['taza', 'cup', 'cups'].includes(key)) return 'g';
+    return 'g';
+  }
+
+  function scaleFromItem(item: NutritionItem, qty: number, unit: string): MacroTotals {
+    const baseUnit = item.per.unit; // g, ml, unidad
+    const normalized = normalizeUnit(unit);
+    let factor = 1;
+
+    if (baseUnit === 'unidad' && normalized === 'unidad') {
+      factor = qty / item.per.amount;
+    } else if (baseUnit !== 'unidad' && normalized !== 'unidad') {
+      factor = qty / item.per.amount;
+    } else if (baseUnit === 'unidad' && normalized !== 'unidad') {
+      const approxPerUnitG = 50; // heuristic
+      factor = qty / approxPerUnitG;
+    } else if (baseUnit !== 'unidad' && normalized === 'unidad') {
+      const approxUnitG = 50; // heuristic
+      factor = (qty * approxUnitG) / item.per.amount;
+    }
+
+    return {
+      calories: item.calories * factor,
+      protein: item.protein * factor,
+      carbs: item.carbs * factor,
+      fat: item.fat * factor,
+    };
+  }
+
+  function estimateMacrosFallback(ings: Ingredient[]): MacroTotals {
+    console.log('[Macros][Fallback] estimating with local DB for', ings);
+    return ings.reduce<MacroTotals>((acc, ing) => {
+      const qty = coerceNumber(ing.quantity) ?? 0;
+      const unit = normalizeUnit(ing.unit);
+      const item = findNutritionItem(ing.name.toLowerCase());
+      if (item) {
+        const scaled = scaleFromItem(item, qty, unit);
+        return {
+          calories: acc.calories + scaled.calories,
+          protein: acc.protein + scaled.protein,
+          carbs: acc.carbs + scaled.carbs,
+          fat: acc.fat + scaled.fat,
+        };
+      }
+      // heuristic when unknown: assume 4 kcal/g for carbs/protein, 9 for fat
+      // Guess macronutrient split by keywords
+      const key = ing.name.toLowerCase();
+      let p = 0.15, c = 0.7, f = 0.15; // default carb source
+      if (/(pollo|carne|pavo|atun|atún|huevo|claras|queso|yogur|tofu|prote)/.test(key)) p = 0.7, c = 0.05, f = 0.25;
+      if (/(aceite|mantequilla|nuez|aguacate|almendra|cacahuete|oliva)/.test(key)) p = 0.05, c = 0.05, f = 0.9;
+      const grams = unit === 'unidad' ? qty * 50 : qty; // assume 1 unidad ~ 50g
+      const kcal = grams * (p * 4 + c * 4 + f * 9);
+      return {
+        calories: acc.calories + kcal,
+        protein: acc.protein + grams * p,
+        carbs: acc.carbs + grams * c,
+        fat: acc.fat + grams * f,
+      };
+    }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+  }
+
+  const generateMacrosWithAI = async (): Promise<MacroTotals | null> => {
     if (ingredients.length === 0) {
       Alert.alert('Error', 'Añade ingredientes primero');
       return null;
@@ -98,57 +173,52 @@ export default function CreateMealScreen() {
     setIsGeneratingMacros(true);
     try {
       const ingredientsList = ingredients
-        .map(ing => `${ing.quantity}${ing.unit} de ${ing.name}`)
+        .map(ing => `${ing.quantity}${ing.unit} ${ing.name}`)
         .join(', ');
 
-      const prompt = `Eres un nutricionista experto. Calcula los macros nutricionales totales aproximados para una comida con estos ingredientes: ${ingredientsList}.
-
-Responde SOLO con un objeto JSON válido en este formato exacto (sin texto adicional):
-{"calories": número, "protein": número, "carbs": número, "fat": número}
-
-Los valores deben ser:
-- calories: calorías totales en kcal
-- protein: proteínas totales en gramos
-- carbs: carbohidratos totales en gramos  
-- fat: grasas totales en gramos
-
-Ejemplo de respuesta: {"calories": 450, "protein": 35, "carbs": 40, "fat": 15}`;
-
       console.log('Generando macros para:', ingredientsList);
-      const response = await generateText(prompt);
-      console.log('Respuesta de IA:', response);
-      
-      let cleanedResponse = response.trim();
-      
-      if (cleanedResponse.startsWith('```json')) {
-        cleanedResponse = cleanedResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-      } else if (cleanedResponse.startsWith('```')) {
-        cleanedResponse = cleanedResponse.replace(/```\s*/g, '');
+
+      const schema = z.object({
+        calories: z.number().min(0),
+        protein: z.number().min(0),
+        carbs: z.number().min(0),
+        fat: z.number().min(0),
+      });
+
+      const ai = await generateObject({
+        messages: [
+          { role: 'user', content: `Eres nutricionista. Calcula los MACROS TOTALES APROXIMADOS de esta comida: ${ingredientsList}. Devuelve SOLO JSON válido con número, sin texto extra. Campos: calories(kcal), protein(g), carbs(g), fat(g).` },
+        ],
+        schema,
+      });
+
+      const macros: MacroTotals = {
+        calories: Math.round(ai.calories),
+        protein: Math.round(ai.protein),
+        carbs: Math.round(ai.carbs),
+        fat: Math.round(ai.fat),
+      };
+
+      if (![macros.calories, macros.protein, macros.carbs, macros.fat].every(n => Number.isFinite(n) && n >= 0)) {
+        throw new Error('Valores inválidos de IA');
       }
-      
-      const jsonMatch = cleanedResponse.match(/\{[\s\S]*?\}/);
-      if (!jsonMatch) {
-        console.error('No se encontró JSON en la respuesta:', cleanedResponse);
-        throw new Error('No se encontró JSON válido en la respuesta');
-      }
-      
-      console.log('JSON extraído:', jsonMatch[0]);
-      const macros = JSON.parse(jsonMatch[0]);
-      
-      if (!macros.calories || !macros.protein || !macros.carbs || !macros.fat) {
-        console.error('Macros incompletos:', macros);
-        throw new Error('Respuesta incompleta de la IA');
-      }
-      
-      console.log('Macros generados:', macros);
+
+      console.log('Macros generados (IA):', macros);
       return macros;
     } catch (error) {
-      console.error('Error generating macros:', error);
+      console.error('Error generating macros with IA, using fallback:', error);
+      const fallback = estimateMacrosFallback(ingredients);
+      const rounded: MacroTotals = {
+        calories: Math.round(fallback.calories),
+        protein: Math.round(fallback.protein),
+        carbs: Math.round(fallback.carbs),
+        fat: Math.round(fallback.fat),
+      };
       Alert.alert(
-        'Error al generar macros', 
-        'No se pudieron calcular los macros automáticamente. Por favor, inténtalo de nuevo o ingresa los valores manualmente.'
+        'Cálculo alternativo aplicado',
+        'La IA tuvo un problema. Estimamos los macros con una base local. Puedes editar luego si lo necesitas.'
       );
-      return null;
+      return rounded;
     } finally {
       setIsGeneratingMacros(false);
     }
@@ -475,6 +545,7 @@ Ejemplo de respuesta: {"calories": 450, "protein": 35, "carbs": 40, "fat": 15}`;
             style={[styles.saveButton, isGeneratingMacros && styles.saveButtonDisabled]} 
             onPress={saveMeal}
             disabled={isGeneratingMacros}
+            testID="create-meal-ai-submit"
           >
             {isGeneratingMacros ? (
               <>
@@ -588,7 +659,7 @@ const styles = StyleSheet.create({
   },
   typeOptionActive: {
     borderColor: colors.primary,
-    backgroundColor: colors.primary + '20',
+    backgroundColor: (colors as any).primary + '20',
   },
   typeOptionText: {
     fontSize: 14,
