@@ -172,41 +172,64 @@ export default function CreateMealScreen() {
 
     setIsGeneratingMacros(true);
     try {
-      const ingredientsList = ingredients
-        .map(ing => `${ing.quantity}${ing.unit} ${ing.name}`)
-        .join(', ');
+      const known = ingredients.filter((ing) => !!findNutritionItem(ing.name.toLowerCase()));
+      const unknown = ingredients.filter((ing) => !findNutritionItem(ing.name.toLowerCase()));
 
-      console.log('Generando macros para:', ingredientsList);
+      const knownTotals = known.reduce<MacroTotals>((acc, ing) => {
+        const item = findNutritionItem(ing.name.toLowerCase());
+        const qty = coerceNumber(ing.quantity) ?? 0;
+        const unit = ing.unit ?? 'g';
+        if (!item || !Number.isFinite(qty) || qty <= 0) return acc;
+        const scaled = scaleFromItem(item, qty, unit);
+        return {
+          calories: acc.calories + scaled.calories,
+          protein: acc.protein + scaled.protein,
+          carbs: acc.carbs + scaled.carbs,
+          fat: acc.fat + scaled.fat,
+        };
+      }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
-      const schema = z.object({
-        calories: z.number().min(0),
-        protein: z.number().min(0),
-        carbs: z.number().min(0),
-        fat: z.number().min(0),
-      });
+      let unknownTotals: MacroTotals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
 
-      const ai = await generateObject({
-        messages: [
-          { role: 'user', content: `Eres nutricionista. Calcula los MACROS TOTALES APROXIMADOS de esta comida: ${ingredientsList}. Devuelve SOLO JSON válido con número, sin texto extra. Campos: calories(kcal), protein(g), carbs(g), fat(g).` },
-        ],
-        schema,
-      });
+      if (unknown.length > 0) {
+        const ingredientsList = unknown
+          .map((ing) => `${ing.quantity}${ing.unit} ${ing.name}`)
+          .join(', ');
+        console.log('Generando macros (solo desconocidos) para:', ingredientsList);
 
-      const macros: MacroTotals = {
-        calories: Math.round(ai.calories),
-        protein: Math.round(ai.protein),
-        carbs: Math.round(ai.carbs),
-        fat: Math.round(ai.fat),
-      };
+        const schema = z.object({
+          calories: z.number().min(0),
+          protein: z.number().min(0),
+          carbs: z.number().min(0),
+          fat: z.number().min(0),
+        });
 
-      if (![macros.calories, macros.protein, macros.carbs, macros.fat].every(n => Number.isFinite(n) && n >= 0)) {
-        throw new Error('Valores inválidos de IA');
+        const ai = await generateObject({
+          messages: [
+            { role: 'user', content: `Eres nutricionista. Calcula los MACROS TOTALES APROXIMADOS SOLO de estos ingredientes con sus cantidades exactas: ${ingredientsList}. Devuelve SOLO JSON válido, campos: calories(kcal), protein(g), carbs(g), fat(g). NO asumas 100g si hay otra cantidad.` },
+          ],
+          schema,
+        });
+
+        unknownTotals = {
+          calories: Math.max(0, Math.round(ai.calories)),
+          protein: Math.max(0, Math.round(ai.protein)),
+          carbs: Math.max(0, Math.round(ai.carbs)),
+          fat: Math.max(0, Math.round(ai.fat)),
+        };
       }
 
-      console.log('Macros generados (IA):', macros);
-      return macros;
+      const summed: MacroTotals = {
+        calories: Math.round(knownTotals.calories + unknownTotals.calories),
+        protein: Math.round(knownTotals.protein + unknownTotals.protein),
+        carbs: Math.round(knownTotals.carbs + unknownTotals.carbs),
+        fat: Math.round(knownTotals.fat + unknownTotals.fat),
+      };
+
+      console.log('Macros combinados (DB + IA):', summed);
+      return summed;
     } catch (error) {
-      console.error('Error generating macros with IA, using fallback:', error);
+      console.error('Error generating macros, using fallback 100% local:', error);
       const fallback = estimateMacrosFallback(ingredients);
       const rounded: MacroTotals = {
         calories: Math.round(fallback.calories),
@@ -216,7 +239,7 @@ export default function CreateMealScreen() {
       };
       Alert.alert(
         'Cálculo alternativo aplicado',
-        'La IA tuvo un problema. Estimamos los macros con una base local. Puedes editar luego si lo necesitas.'
+        'Hicimos el cálculo con la base local respetando las cantidades exactas.'
       );
       return rounded;
     } finally {
