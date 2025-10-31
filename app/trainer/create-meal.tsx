@@ -202,27 +202,49 @@ export default function CreateMealScreen() {
         console.log('Generando macros (solo desconocidos) para:', ingredientsList);
 
         const schema = z.object({
-          calories: z.number().min(0),
-          protein: z.number().min(0),
-          carbs: z.number().min(0),
-          fat: z.number().min(0),
+          items: z.array(
+            z.object({
+              nombre: z.string(),
+              calories: z.number().min(0),
+              protein: z.number().min(0),
+              carbs: z.number().min(0),
+              fat: z.number().min(0),
+            })
+          ),
         });
 
         const ai = await generateObject({
           messages: [
-            { role: 'user', content: [
-              { type: 'text', text: 'Eres nutricionista. Calcula los MACROS TOTALES APROXIMADOS SOLO de estos ingredientes. Usa EXACTAMENTE la cantidad indicada por ingrediente. Si ves unidad = "unidad", considera 1 unidad ≈ 50g si no puedes estimar otra cosa. Devuelve SOLO JSON válido con los campos: calories (kcal), protein (g), carbs (g), fat (g). No asumas 100g salvo que la unidad y cantidad lo indiquen.' },
-              { type: 'text', text: JSON.stringify(ingredientsList) },
-            ] },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    'Eres nutricionista. Para CADA ingrediente calcula macros usando EXACTAMENTE su cantidad y unidad dadas. NO normalices a 100g NI uses porciones genéricas. Si unidad = "unidad" y no hay mejor dato, asume 1 unidad ≈ 50g. Devuelve SOLO JSON con { items: [{ nombre, calories, protein, carbs, fat }] } donde calories son kcal totales para esa cantidad, y protein/carbs/fat en gramos para esa cantidad. Ejemplo entrada: [{"nombre":"queso fresco","cantidad":30,"unidad":"g"},{"nombre":"aceite de oliva","cantidad":10,"unidad":"ml"}] -> salida: {"items":[{"nombre":"queso fresco","calories":x,"protein":y,"carbs":z,"fat":w},{"nombre":"aceite de oliva","calories":a,"protein":b,"carbs":c,"fat":d}]}. Nunca devuelvas valores por 100g, siempre por la cantidad indicada.'
+                },
+                { type: 'text', text: JSON.stringify(ingredientsList) },
+              ],
+            },
           ],
           schema,
         });
 
+        unknownTotals = ai.items.reduce<MacroTotals>(
+          (acc, it) => ({
+            calories: acc.calories + (Number.isFinite(it.calories) ? it.calories : 0),
+            protein: acc.protein + (Number.isFinite(it.protein) ? it.protein : 0),
+            carbs: acc.carbs + (Number.isFinite(it.carbs) ? it.carbs : 0),
+            fat: acc.fat + (Number.isFinite(it.fat) ? it.fat : 0),
+          }),
+          { calories: 0, protein: 0, carbs: 0, fat: 0 }
+        );
+
         unknownTotals = {
-          calories: Math.max(0, Math.round(ai.calories)),
-          protein: Math.max(0, Math.round(ai.protein)),
-          carbs: Math.max(0, Math.round(ai.carbs)),
-          fat: Math.max(0, Math.round(ai.fat)),
+          calories: Math.max(0, Math.round(unknownTotals.calories)),
+          protein: Math.max(0, Math.round(unknownTotals.protein)),
+          carbs: Math.max(0, Math.round(unknownTotals.carbs)),
+          fat: Math.max(0, Math.round(unknownTotals.fat)),
         };
       }
 
