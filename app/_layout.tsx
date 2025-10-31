@@ -17,11 +17,11 @@ function RootLayoutNav() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="auth/trainer" options={{ headerShown: false }} />
       <Stack.Screen name="auth/student" options={{ headerShown: false }} />
-      <Stack.Screen name="auth/admin" options={{ headerShown: false }} />
+
       <Stack.Screen name="trainer" options={{ headerShown: false }} />
       <Stack.Screen name="student" options={{ headerShown: false }} />
       <Stack.Screen name="demo" options={{ headerShown: false }} />
-      <Stack.Screen name="admin" options={{ headerShown: false }} />
+
     </Stack>
   );
 }
