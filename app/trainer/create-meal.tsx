@@ -94,7 +94,9 @@ export default function CreateMealScreen() {
   };
 
   function coerceNumber(n: unknown): number | null {
-    const parsed = typeof n === 'number' ? n : parseFloat(String(n));
+    const raw = String(n ?? '').trim();
+    const normalized = raw.replace(/,/g, '.').replace(/[^0-9.\-]/g, '');
+    const parsed = typeof n === 'number' ? n : parseFloat(normalized);
     return Number.isFinite(parsed) ? parsed : null;
   }
 
@@ -192,9 +194,11 @@ export default function CreateMealScreen() {
       let unknownTotals: MacroTotals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
 
       if (unknown.length > 0) {
-        const ingredientsList = unknown
-          .map((ing) => `${ing.quantity}${ing.unit} ${ing.name}`)
-          .join(', ');
+        const ingredientsList = unknown.map((ing) => ({
+          nombre: ing.name,
+          cantidad: coerceNumber(ing.quantity) ?? 0,
+          unidad: ing.unit ?? 'g',
+        }));
         console.log('Generando macros (solo desconocidos) para:', ingredientsList);
 
         const schema = z.object({
@@ -206,7 +210,10 @@ export default function CreateMealScreen() {
 
         const ai = await generateObject({
           messages: [
-            { role: 'user', content: `Eres nutricionista. Calcula los MACROS TOTALES APROXIMADOS SOLO de estos ingredientes con sus cantidades exactas: ${ingredientsList}. Devuelve SOLO JSON válido, campos: calories(kcal), protein(g), carbs(g), fat(g). NO asumas 100g si hay otra cantidad.` },
+            { role: 'user', content: [
+              { type: 'text', text: 'Eres nutricionista. Calcula los MACROS TOTALES APROXIMADOS SOLO de estos ingredientes. Usa EXACTAMENTE la cantidad indicada por ingrediente. Si ves unidad = "unidad", considera 1 unidad ≈ 50g si no puedes estimar otra cosa. Devuelve SOLO JSON válido con los campos: calories (kcal), protein (g), carbs (g), fat (g). No asumas 100g salvo que la unidad y cantidad lo indiquen.' },
+              { type: 'text', text: JSON.stringify(ingredientsList) },
+            ] },
           ],
           schema,
         });
