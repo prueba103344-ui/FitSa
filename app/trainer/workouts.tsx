@@ -31,15 +31,28 @@ export default function TrainerWorkoutsScreen() {
     const newSet: ExerciseSet = {
       set: currentSets.length + 1,
       reps: 10,
+      repsMin: 8,
+      repsMax: 12,
       weight: 0,
       completed: false,
     };
     setCurrentSets([...currentSets, newSet]);
   };
 
-  const handleUpdateSet = (index: number, field: 'reps' | 'weight', value: string) => {
+  const handleUpdateSet = (
+    index: number,
+    field: 'reps' | 'repsMin' | 'repsMax' | 'weight',
+    value: string
+  ) => {
     const updated = [...currentSets];
-    updated[index] = { ...updated[index], [field]: parseInt(value) || 0 };
+    const numeric = parseInt(value) || 0;
+    const next = { ...updated[index], [field]: numeric } as ExerciseSet;
+    if (field === 'repsMin' || field === 'repsMax') {
+      const minVal = field === 'repsMin' ? numeric : (next.repsMin ?? updated[index].repsMin ?? updated[index].reps ?? 0);
+      const maxVal = field === 'repsMax' ? numeric : (next.repsMax ?? updated[index].repsMax ?? updated[index].reps ?? 0);
+      next.reps = Math.max(0, Math.round((minVal + maxVal) / 2));
+    }
+    updated[index] = next;
     setCurrentSets(updated);
   };
 
@@ -202,7 +215,10 @@ export default function TrainerWorkoutsScreen() {
                         {ex.sets.map((set, idx) => (
                           <View key={idx} style={styles.expandedSet}>
                             <Text style={styles.expandedSetText}>
-                              Serie {set.set}: {set.reps} reps × {set.weight}kg
+                              Serie {set.set}: {((set.repsMin ?? set.reps) === (set.repsMax ?? set.reps))
+                                ? `${set.repsMin ?? set.reps}`
+                                : `${set.repsMin ?? set.reps}-${set.repsMax ?? set.reps}`
+                              } reps × {set.weight}kg
                             </Text>
                           </View>
                         ))}
@@ -313,11 +329,19 @@ export default function TrainerWorkoutsScreen() {
                   <View key={idx} style={styles.setRow}>
                     <Text style={styles.setText}>Serie {set.set}</Text>
                     <TextInput
-                      style={styles.setInput}
-                      value={set.reps.toString()}
-                      onChangeText={(val) => handleUpdateSet(idx, 'reps', val)}
+                      style={[styles.setInput, { flex: 0.9 }]}
+                      value={(set.repsMin ?? set.reps).toString()}
+                      onChangeText={(val) => handleUpdateSet(idx, 'repsMin', val)}
                       keyboardType="numeric"
-                      placeholder="Reps"
+                      placeholder="Reps mín"
+                      placeholderTextColor={colors.textSecondary}
+                    />
+                    <TextInput
+                      style={[styles.setInput, { flex: 0.9 }]}
+                      value={(set.repsMax ?? set.reps).toString()}
+                      onChangeText={(val) => handleUpdateSet(idx, 'repsMax', val)}
+                      keyboardType="numeric"
+                      placeholder="Reps máx"
                       placeholderTextColor={colors.textSecondary}
                     />
                     <TextInput

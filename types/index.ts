@@ -30,6 +30,8 @@ export interface ExerciseSet {
   set: number;
   reps: number;
   weight: number;
+  repsMin?: number;
+  repsMax?: number;
   completed?: boolean;
   actualReps?: number;
   actualWeight?: number;

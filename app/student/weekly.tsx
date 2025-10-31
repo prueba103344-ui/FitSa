@@ -152,7 +152,12 @@ export default function StudentWeeklyScreen() {
                       <Text style={styles.todayPlanName}>{workout.name}</Text>
                       <View style={styles.todayPlanDetails}>
                         <Text style={styles.todayPlanDetail}>Duración: 30 minutos</Text>
-                        <Text style={styles.todayPlanDetail}>Reps: {workout.exercises.reduce((acc, ex) => acc + ex.sets.reduce((a, s) => a + s.reps, 0), 0)}</Text>
+                        <Text style={styles.todayPlanDetail}>Reps: {workout.exercises.reduce((acc, ex) => acc + ex.sets.reduce((a, s) => {
+                          const min = s.repsMin ?? s.reps;
+                          const max = s.repsMax ?? s.reps;
+                          const avg = Math.round((min + max) / 2);
+                          return a + avg;
+                        }, 0), 0)}</Text>
                         <Text style={styles.todayPlanDetail}>Series: {workout.exercises.reduce((acc, ex) => acc + ex.sets.length, 0)}</Text>
                         <Text style={styles.todayPlanDetail}>Ejercicios: {workout.exercises.length}</Text>
                       </View>
@@ -268,7 +273,10 @@ export default function StudentWeeklyScreen() {
                             {exercise.sets.map((set, idx) => (
                               <View key={idx} style={styles.modalSet}>
                                 <Text style={styles.modalSetText}>
-                                  Serie {set.set}: {set.reps} reps × {set.weight}kg
+                                  Serie {set.set}: {((set.repsMin ?? set.reps) === (set.repsMax ?? set.reps))
+                                    ? `${set.repsMin ?? set.reps}`
+                                    : `${set.repsMin ?? set.reps}-${set.repsMax ?? set.reps}`
+                                  } reps × {set.weight}kg
                                 </Text>
                               </View>
                             ))}

@@ -334,7 +334,7 @@ export default function StudentTrainingScreen() {
                           <View style={styles.setsDetail}>
                             {exercise.sets.map((set, idx) => {
                               const hasActualValues = set.actualReps !== undefined || set.actualWeight !== undefined;
-                              const isDifferent = (set.actualReps && set.actualReps !== set.reps) || (set.actualWeight && set.actualWeight !== set.weight);
+                              const isDifferent = (set.actualReps && set.reps !== undefined && set.actualReps !== set.reps) || (set.actualWeight && set.actualWeight !== set.weight);
                               
                               return (
                                 <View key={idx} style={[
@@ -359,7 +359,10 @@ export default function StudentTrainingScreen() {
                                         Serie {set.set}
                                       </Text>
                                       {hasActualValues && (
-                                        <Text style={styles.plannedLabel}>Pautado: {set.reps} reps • {set.weight} kg</Text>
+                                        <Text style={styles.plannedLabel}>Pautado: {((set.repsMin ?? set.reps) === (set.repsMax ?? set.reps))
+                                          ? `${set.repsMin ?? set.reps}`
+                                          : `${set.repsMin ?? set.reps}-${set.repsMax ?? set.reps}`
+                                        } reps • {set.weight} kg</Text>
                                       )}
                                     </View>
                                   </TouchableOpacity>
@@ -370,7 +373,10 @@ export default function StudentTrainingScreen() {
                                         set.completed && styles.setRowValueCompleted,
                                         hasActualValues && isDifferent && styles.setRowValueModified,
                                       ]}>
-                                        {set.actualReps ?? set.reps} reps
+                                        {set.actualReps ?? ((set.repsMin ?? set.reps) === (set.repsMax ?? set.reps)
+                                          ? (set.repsMin ?? set.reps)
+                                          : `${set.repsMin ?? set.reps}-${set.repsMax ?? set.reps}`
+                                        )} reps
                                       </Text>
                                       <Text style={styles.setRowDivider}>•</Text>
                                       <Text style={[
