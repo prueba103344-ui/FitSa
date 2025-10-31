@@ -22,6 +22,10 @@ export default function LandingScreen() {
     router.push('/auth/student' as any);
   };
 
+  const handleAdminPress = () => {
+    router.push('/auth/admin' as any);
+  };
+
 
 
   return (
@@ -84,6 +88,9 @@ export default function LandingScreen() {
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>Inicia sesión o regístrate para continuar</Text>
+              <TouchableOpacity onPress={handleAdminPress} activeOpacity={0.8} testID="go-admin" style={styles.adminLink}>
+                <Text style={styles.adminText}>Entrar como admin</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </LinearGradient>
@@ -178,10 +185,23 @@ const styles = StyleSheet.create({
   footer: {
     alignItems: 'center',
     marginTop: 20,
+    gap: 10,
   },
   footerText: {
     fontSize: 14,
     color: colors.textTertiary,
     textAlign: 'center',
+  },
+  adminLink: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  adminText: {
+    color: colors.neon,
+    fontWeight: '800' as const,
   },
 });

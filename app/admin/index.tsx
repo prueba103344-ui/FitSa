@@ -1,14 +1,17 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { trpc } from '@/lib/trpc';
 import colors from '@/constants/colors';
 import { Users, Dumbbell, UtensilsCrossed, RefreshCw } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useApp } from '@/contexts/AppContext';
 
 export default function AdminDashboard() {
   const insets = useSafeAreaInsets();
-  const query = trpc.admin.listTrainersWithCounts.useQuery(undefined, { refetchOnMount: false, refetchOnWindowFocus: false });
+  const router = useRouter();
+  const { isAdminAuthed } = useApp();
+  const query = trpc.admin.listTrainersWithCounts.useQuery(undefined, { enabled: isAdminAuthed, refetchOnMount: false, refetchOnWindowFocus: false });
   const [search, setSearch] = useState<string>('');
 
   const filtered = useMemo(() => {
@@ -22,6 +25,16 @@ export default function AdminDashboard() {
   const onRefresh = useCallback(() => {
     query.refetch();
   }, [query]);
+
+  useEffect(() => {
+    if (!isAdminAuthed) {
+      router.replace('/auth/admin' as any);
+    }
+  }, [isAdminAuthed, router]);
+
+  if (!isAdminAuthed) {
+    return <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8 }]} />;
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8 }] }>

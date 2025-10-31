@@ -10,6 +10,7 @@ const BASE_KEYS = {
   STUDENTS: '@fitsa_students',
   WORKOUTS: '@fitsa_workouts',
   DIETS: '@fitsa_diets',
+  ADMIN_AUTHED: '@fitsa_admin_authed',
 };
 
 interface StoredUser {
@@ -28,17 +29,19 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const [dietPlans, setDietPlans] = useState<DietPlan[]>([]);
   const [progress, setProgress] = useState<DailyProgress[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isAdminAuthed, setIsAdminAuthed] = useState<boolean>(false);
 
   const getKey = useCallback((k: keyof typeof BASE_KEYS) => BASE_KEYS[k], []);
 
   const loadData = useCallback(async () => {
     try {
-      const [storedUser, storedProgress, storedStudents, storedWorkouts, storedDiets] = await Promise.all([
+      const [storedUser, storedProgress, storedStudents, storedWorkouts, storedDiets, adminFlag] = await Promise.all([
         AsyncStorage.getItem(getKey('CURRENT_USER')),
         AsyncStorage.getItem(getKey('PROGRESS')),
         AsyncStorage.getItem(getKey('STUDENTS')),
         AsyncStorage.getItem(getKey('WORKOUTS')),
         AsyncStorage.getItem(getKey('DIETS')),
+        AsyncStorage.getItem(getKey('ADMIN_AUTHED')),
       ]);
 
       const parsedUser: User | null = storedUser ? JSON.parse(storedUser) : null;
@@ -46,6 +49,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
       const parsedStudents: Student[] = storedStudents ? JSON.parse(storedStudents) : [];
       const parsedWorkouts: WorkoutPlan[] = storedWorkouts ? JSON.parse(storedWorkouts) : [];
       const parsedDiets: DietPlan[] = storedDiets ? JSON.parse(storedDiets) : [];
+
+      setIsAdminAuthed(adminFlag === '1');
 
       if (parsedUser?.role === 'trainer') {
         const trainerStudents = parsedStudents.filter(s => s.trainerId === parsedUser.id);
@@ -73,6 +78,25 @@ export const [AppProvider, useApp] = createContextHook(() => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const adminLogin = useCallback(async (username: string, password: string) => {
+    const envUser = process.env.EXPO_PUBLIC_ADMIN_USER ?? 'admin';
+    const envPass = process.env.EXPO_PUBLIC_ADMIN_PASS ?? 'admin123';
+    console.log('[AppContext] Admin login attempt for:', username);
+    if (username === envUser && password === envPass) {
+      await AsyncStorage.setItem(getKey('ADMIN_AUTHED'), '1');
+      setIsAdminAuthed(true);
+      console.log('[AppContext] Admin login success');
+      return true;
+    }
+    console.log('[AppContext] Admin login failed');
+    throw new Error('Credenciales de admin inválidas');
+  }, [getKey]);
+
+  const adminLogout = useCallback(async () => {
+    await AsyncStorage.removeItem(getKey('ADMIN_AUTHED'));
+    setIsAdminAuthed(false);
+  }, [getKey]);
 
   const registerTrainer = useCallback(async (username: string, password: string, name: string) => {
     try {
@@ -435,6 +459,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
     dietPlans,
     progress,
     isLoading,
+    isAdminAuthed,
+    adminLogin,
+    adminLogout,
     registerTrainer,
     login,
     logout,
@@ -459,6 +486,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
     dietPlans,
     progress,
     isLoading,
+    isAdminAuthed,
+    adminLogin,
+    adminLogout,
     registerTrainer,
     login,
     logout,
