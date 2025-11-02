@@ -1,5 +1,5 @@
 import { createTRPCReact } from "@trpc/react-query";
-import { createTRPCClient, httpLink } from "@trpc/client";
+import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import type { AppRouter } from "@/backend/trpc/app-router";
 import superjson from "superjson";
 
@@ -19,15 +19,13 @@ const getBaseUrl = () => {
     return url;
   }
 
-  console.error("[TRPC] No base URL found");
-  throw new Error(
-    "No base URL found. Set EXPO_PUBLIC_API_URL to your backend origin (e.g. https://api.example.com)"
-  );
+  console.error("[TRPC] No base URL found - defaulting to window origin");
+  return typeof window !== "undefined" ? window.location.origin : "";
 };
 
 export const trpcClient = createTRPCClient<AppRouter>({
   links: [
-    httpLink({
+    httpBatchLink({
       url: `${getBaseUrl()}/api/trpc`,
       transformer: superjson,
       headers: () => {
