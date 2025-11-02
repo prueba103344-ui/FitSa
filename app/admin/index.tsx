@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, Image, ActivityIndicator } from 'react-native';
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from '@/constants/colors';
@@ -29,10 +29,17 @@ export default function AdminScreen() {
   });
 
   const handleLogin = async () => {
+    if (!username.trim() || !password.trim()) {
+      Alert.alert('Error', 'Completa usuario y contraseña');
+      return;
+    }
+    console.log('Intentando login con:', username);
     try {
       const res = await loginMutation.mutateAsync({ username, password });
+      console.log('Login exitoso:', res);
       setAdminKey(res.adminKey);
     } catch (e: any) {
+      console.error('Error de login:', e);
       Alert.alert('Error', e?.message ?? 'Credenciales inválidas');
     }
   };
@@ -63,8 +70,17 @@ export default function AdminScreen() {
           <TextInput style={styles.input} value={username} onChangeText={setUsername} placeholder="admin" placeholderTextColor={colors.textSecondary} />
           <Text style={styles.label}>Contraseña</Text>
           <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="••••••" secureTextEntry placeholderTextColor={colors.textSecondary} />
-          <TouchableOpacity style={styles.primaryButton} onPress={handleLogin} testID="admin-login">
-            <Text style={styles.primaryButtonText}>Entrar</Text>
+          <TouchableOpacity 
+            style={[styles.primaryButton, loginMutation.isPending && { opacity: 0.6 }]} 
+            onPress={handleLogin} 
+            testID="admin-login"
+            disabled={loginMutation.isPending}
+          >
+            {loginMutation.isPending ? (
+              <ActivityIndicator color={colors.background} />
+            ) : (
+              <Text style={styles.primaryButtonText}>Entrar</Text>
+            )}
           </TouchableOpacity>
         </View>
       </SafeAreaView>
