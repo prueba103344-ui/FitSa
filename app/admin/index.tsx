@@ -33,14 +33,18 @@ export default function AdminScreen() {
       Alert.alert('Error', 'Completa usuario y contraseña');
       return;
     }
-    console.log('Intentando login con:', username);
+    console.log('[ADMIN] Intentando login con:', username);
     try {
       const res = await loginMutation.mutateAsync({ username, password });
-      console.log('Login exitoso:', res);
+      console.log('[ADMIN] Login exitoso:', res);
       setAdminKey(res.adminKey);
     } catch (e: any) {
-      console.error('Error de login:', e);
-      Alert.alert('Error', e?.message ?? 'Credenciales inválidas');
+      console.error('[ADMIN] Error de login completo:', JSON.stringify(e, null, 2));
+      console.error('[ADMIN] Error message:', e?.message);
+      console.error('[ADMIN] Error shape:', e?.shape);
+      console.error('[ADMIN] Error data:', e?.data);
+      const errorMsg = e?.message || e?.shape?.message || e?.data?.message || 'Error de conexión. Verifica que el servidor esté funcionando.';
+      Alert.alert('Error de login', errorMsg);
     }
   };
 

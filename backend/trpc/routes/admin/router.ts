@@ -11,11 +11,15 @@ const adminGuard = (inputKey?: string) => {
 
 export default createTRPCRouter({
   login: publicProcedure.input(z.object({ username: z.string(), password: z.string() })).mutation(async ({ input }) => {
+    console.log('[ADMIN ROUTER] Login attempt for:', input.username);
     const expectedUser = process.env.ADMIN_USER || process.env.EXPO_PUBLIC_ADMIN_USER || 'admin';
     const expectedPass = process.env.ADMIN_PASS || process.env.EXPO_PUBLIC_ADMIN_PASS || 'admin123';
+    console.log('[ADMIN ROUTER] Expected user:', expectedUser);
     if (input.username === expectedUser && input.password === expectedPass) {
-      return { adminKey: `${expectedUser}:${expectedPass}` } as const;
+      console.log('[ADMIN ROUTER] Login successful');
+      return { adminKey: `${expectedUser}:${expectedPass}` };
     }
+    console.log('[ADMIN ROUTER] Login failed - invalid credentials');
     throw new Error('Credenciales inválidas');
   }),
   overview: publicProcedure.input(z.object({ adminKey: z.string() })).query(async ({ input }) => {
