@@ -34,16 +34,29 @@ export default function AdminScreen() {
       return;
     }
     console.log('[ADMIN] Intentando login con:', username);
+    console.log('[ADMIN] Endpoint tRPC:', process.env.EXPO_PUBLIC_API_URL || 'usando window.location.origin');
     try {
       const res = await loginMutation.mutateAsync({ username, password });
       console.log('[ADMIN] Login exitoso:', res);
       setAdminKey(res.adminKey);
     } catch (e: any) {
-      console.error('[ADMIN] Error de login completo:', JSON.stringify(e, null, 2));
+      console.error('[ADMIN] Error de login completo:', e);
       console.error('[ADMIN] Error message:', e?.message);
       console.error('[ADMIN] Error shape:', e?.shape);
       console.error('[ADMIN] Error data:', e?.data);
-      const errorMsg = e?.message || e?.shape?.message || e?.data?.message || 'Error de conexión. Verifica que el servidor esté funcionando.';
+      console.error('[ADMIN] Error cause:', e?.cause);
+      
+      let errorMsg = 'Error de conexión';
+      if (e?.message && !e.message.includes('JSON Parse')) {
+        errorMsg = e.message;
+      } else if (e?.shape?.message) {
+        errorMsg = e.shape.message;
+      } else if (e?.data?.message) {
+        errorMsg = e.data.message;
+      } else if (e?.message?.includes('JSON Parse')) {
+        errorMsg = 'Error del servidor. Verifica que el backend esté funcionando correctamente.';
+      }
+      
       Alert.alert('Error de login', errorMsg);
     }
   };

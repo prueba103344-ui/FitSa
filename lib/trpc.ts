@@ -5,12 +5,13 @@ import superjson from "superjson";
 
 export const trpc = createTRPCReact<AppRouter>();
 
-const getBaseUrl = () => {
+export const getBaseUrl = () => {
   const explicit =
     process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
   if (explicit) {
-    console.log("[TRPC] Using explicit EXPO_PUBLIC_API_URL:", explicit);
-    return explicit;
+    const baseUrl = explicit.replace(/\/api\/trpc$/, '').replace(/\/$/, '');
+    console.log("[TRPC] Using explicit API URL:", baseUrl);
+    return baseUrl;
   }
 
   if (typeof window !== "undefined" && window.location?.origin) {
