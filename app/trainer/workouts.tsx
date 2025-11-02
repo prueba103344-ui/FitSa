@@ -1,13 +1,15 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { Plus, X, Trash2, Dumbbell, ImageUp } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { WorkoutPlan, Exercise, ExerciseSet, Trainer } from '@/types';
-import { Edit2, PlayCircle } from 'lucide-react-native';
+import { Edit2 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { getDefaultExerciseVideo } from '@/constants/exerciseVideos';
+import { trpc } from '@/lib/trpc';
+import { useEffect } from 'react';
+
 
 export default function TrainerWorkoutsScreen() {
   const { currentUser, workoutPlans, students, addWorkoutPlan, updateWorkoutPlan, deleteWorkoutPlan } = useApp();
@@ -20,9 +22,9 @@ export default function TrainerWorkoutsScreen() {
   const [currentExerciseImage, setCurrentExerciseImage] = useState<string>('');
   const [picking, setPicking] = useState<boolean>(false);
   const [currentSets, setCurrentSets] = useState<ExerciseSet[]>([]);
-  const guessedVideo = getDefaultExerciseVideo(currentExercise);
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
   const [editingPlan, setEditingPlan] = useState<WorkoutPlan | null>(null);
+  const exercisesCatalog = trpc.exercises.list.useQuery(undefined, { staleTime: 60_000 });
 
   const trainer = currentUser as Trainer;
   const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -56,6 +58,19 @@ export default function TrainerWorkoutsScreen() {
     setCurrentSets(updated);
   };
 
+  useEffect(() => {
+    try {
+      const list = exercisesCatalog.data ?? [];
+      const key = currentExercise.trim().toLowerCase();
+      const match = list.find(e => key !== '' && (e.name.toLowerCase() === key || key.includes(e.name.toLowerCase())));
+      if (match && !currentExerciseImage) {
+        setCurrentExerciseImage(match.imageUrl);
+      }
+    } catch (e) {
+      console.log('[Workouts] catalog match error', e);
+    }
+  }, [currentExercise, exercisesCatalog.data, currentExerciseImage]);
+
   const pickExerciseImage = async () => {
     try {
       setPicking(true);
@@ -88,7 +103,6 @@ export default function TrainerWorkoutsScreen() {
       name: currentExercise,
       sets: currentSets,
       imageUrl: currentExerciseImage || undefined,
-      videoUrl: guessedVideo || undefined,
     };
 
     setExercises([...exercises, newExercise]);
@@ -325,6 +339,15 @@ export default function TrainerWorkoutsScreen() {
                   placeholderTextColor={colors.textSecondary}
                 />
 
+                {currentSets.length > 0 && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <Text style={[styles.setText, { opacity: 0 }]}>{' '}</Text>
+                    <Text style={{ flex: 0.9, color: colors.textSecondary, fontSize: 12, fontWeight: '600' as const }}>Reps mín</Text>
+                    <Text style={{ flex: 0.9, color: colors.textSecondary, fontSize: 12, fontWeight: '600' as const }}>Reps máx</Text>
+                    <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 12, fontWeight: '600' as const }}>Kg</Text>
+                  </View>
+                )}
+
                 {currentSets.map((set, idx) => (
                   <View key={idx} style={styles.setRow}>
                     <Text style={styles.setText}>Serie {set.set}</Text>
@@ -363,15 +386,6 @@ export default function TrainerWorkoutsScreen() {
                   <Image source={{ uri: currentExerciseImage }} style={{ width: '100%', height: 140, borderRadius: 12, marginTop: 8 }} />
                 ) : null}
 
-                {guessedVideo ? (
-                  <View style={styles.videoHint}>
-                    <PlayCircle color={colors.primary} size={18} />
-                    <Text style={styles.videoHintText}>Video predeterminado listo</Text>
-                    <TouchableOpacity onPress={() => Linking.openURL(guessedVideo)} testID="preview-default-video">
-                      <Text style={styles.videoHintLink}>Ver</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : null}
 
                 <TouchableOpacity style={styles.addExerciseButton} onPress={pickExerciseImage} disabled={picking}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -621,29 +635,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.primary,
     fontWeight: '600' as const,
-  },
-  videoHint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.cardLight,
-    padding: 12,
-    borderRadius: 12,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  videoHintText: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: '600' as const,
-  },
-  videoHintLink: {
-    fontSize: 13,
-    color: colors.primary,
-    fontWeight: '800' as const,
   },
   addExerciseButton: {
     backgroundColor: colors.primary + '20',

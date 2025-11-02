@@ -86,7 +86,9 @@ export default function LandingScreen() {
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>Inicia sesión o regístrate para continuar</Text>
-
+              <TouchableOpacity onPress={() => router.push('/admin' as any)} style={styles.adminLink} testID="go-admin">
+                <Text style={styles.adminText}>Panel administrador</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </LinearGradient>

@@ -5,7 +5,8 @@ import workoutsRouter from "./routes/workouts/router";
 import mediaRouter from "./routes/media/router";
 import studentsRouter from "./routes/students/router";
 import authRouter from "./routes/auth/router";
-
+import adminRouter from "./routes/admin/router";
+import exercisesRouter from "./routes/exercises/router";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -16,6 +17,8 @@ export const appRouter = createTRPCRouter({
   workouts: workoutsRouter,
   media: mediaRouter,
   students: studentsRouter,
+  admin: adminRouter,
+  exercises: exercisesRouter,
 
 });
 

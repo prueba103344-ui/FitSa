@@ -14,12 +14,15 @@ export type StoredUser = {
   createdAt: string;
 };
 
+export type ExerciseCatalogItem = { id: string; name: string; imageUrl: string };
+
 export type DBData = {
   users: StoredUser[];
   students: Student[];
   diets: DietPlan[];
   workouts: WorkoutPlan[];
   media: { id: string; studentId: string; uri: string; createdAt: string; type: 'photo' | 'video' }[];
+  exercises: ExerciseCatalogItem[];
 };
 
 const DATA_PATH = path.join(process.cwd(), 'backend', 'data.json');
@@ -28,7 +31,7 @@ async function ensureFile() {
   try {
     await fs.access(DATA_PATH);
   } catch {
-    const empty: DBData = { users: [], students: [], diets: [], workouts: [], media: [] };
+    const empty: DBData = { users: [], students: [], diets: [], workouts: [], media: [], exercises: [] };
     await fs.mkdir(path.dirname(DATA_PATH), { recursive: true });
     await fs.writeFile(DATA_PATH, JSON.stringify(empty, null, 2), 'utf-8');
   }
@@ -45,9 +48,10 @@ export async function readDB(): Promise<DBData> {
       diets: parsed.diets ?? [],
       workouts: parsed.workouts ?? [],
       media: parsed.media ?? [],
+      exercises: parsed.exercises ?? [],
     };
   } catch {
-    const empty: DBData = { users: [], students: [], diets: [], workouts: [], media: [] };
+    const empty: DBData = { users: [], students: [], diets: [], workouts: [], media: [], exercises: [] };
     await fs.writeFile(DATA_PATH, JSON.stringify(empty, null, 2), 'utf-8');
     return empty;
   }
