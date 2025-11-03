@@ -25,6 +25,7 @@ export default function TrainerWorkoutsScreen() {
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
   const [editingPlan, setEditingPlan] = useState<WorkoutPlan | null>(null);
+  const [isPickingSuggestion, setIsPickingSuggestion] = useState<boolean>(false);
   const exercisesCatalog = trpc.exercises.list.useQuery(undefined, { staleTime: 60_000 });
   type CatalogItem = { id?: string; name: string; imageUrl: string };
   const predefinedCatalog: CatalogItem[] = [
@@ -353,7 +354,10 @@ export default function TrainerWorkoutsScreen() {
                     placeholder="Nombre del ejercicio"
                     placeholderTextColor={colors.textSecondary}
                     onFocus={() => setShowSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                    onBlur={() => {
+                      if (isPickingSuggestion) return;
+                      setTimeout(() => setShowSuggestions(false), 120);
+                    }}
                     testID="exercise-name-input"
                   />
                   {showSuggestions && filteredSuggestions.length > 0 && (
@@ -365,11 +369,13 @@ export default function TrainerWorkoutsScreen() {
                             style={styles.suggestionItem}
                             activeOpacity={0.7}
                             testID={`exercise-suggestion-${i}`}
-                            onPress={() => {
+                            onPressIn={() => {
+                              setIsPickingSuggestion(true);
                               setCurrentExercise(sug.name);
                               setCurrentExerciseImage(sug.imageUrl);
                               setShowSuggestions(false);
                               try { Keyboard.dismiss(); } catch (_) { }
+                              setTimeout(() => setIsPickingSuggestion(false), 150);
                             }}
                           >
                             <Image source={{ uri: sug.imageUrl }} style={styles.suggestionImage} />
@@ -712,11 +718,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,
-    zIndex: 20,
+    zIndex: 9999,
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 12,
   },
   suggestionItem: {
     flexDirection: 'row',
