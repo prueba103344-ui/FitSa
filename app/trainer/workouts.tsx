@@ -73,18 +73,7 @@ export default function TrainerWorkoutsScreen() {
     setCurrentSets(updated);
   };
 
-  useEffect(() => {
-    try {
-      const list = combinedCatalog;
-      const key = currentExercise.trim().toLowerCase();
-      const match = list.find(e => key !== '' && e.name.toLowerCase().startsWith(key));
-      if (match && !currentExerciseImage) {
-        setCurrentExerciseImage(match.imageUrl);
-      }
-    } catch (e) {
-      console.log('[Workouts] catalog match error', e);
-    }
-  }, [currentExercise, exercisesCatalog.data, currentExerciseImage]);
+
 
   const pickExerciseImage = async () => {
     try {
@@ -371,11 +360,7 @@ export default function TrainerWorkoutsScreen() {
                             activeOpacity={0.8}
                             onPress={() => {
                               setIsPickingSuggestion(true);
-                              setCurrentExercise(sug.name);
-                              setCurrentExerciseImage(sug.imageUrl);
-                              setShowSuggestions(false);
-                              try { Keyboard.dismiss(); } catch (_) { }
-                              setTimeout(() => setIsPickingSuggestion(false), 150);
+                              setTimeout(() => setIsPickingSuggestion(false), 120);
                             }}
                           >
                             <Image source={{ uri: sug.imageUrl }} style={styles.suggestionImage} />
