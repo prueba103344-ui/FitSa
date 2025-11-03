@@ -351,7 +351,7 @@ export default function StudentTrainingScreen() {
                                     ]}>
                                       {set.completed && <Check size={16} color={colors.background} />}
                                     </View>
-                                    <View>
+                                    <View style={styles.setInfoContainer}>
                                       <Text style={[
                                         styles.setRowText,
                                         set.completed && styles.setRowTextCompleted,
@@ -359,10 +359,12 @@ export default function StudentTrainingScreen() {
                                         Serie {set.set}
                                       </Text>
                                       {hasActualValues && (
-                                        <Text style={styles.plannedLabel}>Pautado: {((set.repsMin ?? set.reps) === (set.repsMax ?? set.reps))
-                                          ? `${set.repsMin ?? set.reps}`
-                                          : `${set.repsMin ?? set.reps}-${set.repsMax ?? set.reps}`
-                                        } reps • {set.weight} kg</Text>
+                                        <Text style={styles.plannedLabel} numberOfLines={1}>
+                                          Pautado: {((set.repsMin ?? set.reps) === (set.repsMax ?? set.reps))
+                                            ? `${set.repsMin ?? set.reps}`
+                                            : `${set.repsMin ?? set.reps}-${set.repsMax ?? set.reps}`
+                                          } reps • {set.weight} kg
+                                        </Text>
                                       )}
                                     </View>
                                   </TouchableOpacity>
@@ -372,7 +374,7 @@ export default function StudentTrainingScreen() {
                                         styles.setRowValue,
                                         set.completed && styles.setRowValueCompleted,
                                         hasActualValues && isDifferent && styles.setRowValueModified,
-                                      ]}>
+                                      ]} numberOfLines={1}>
                                         {set.actualReps ?? ((set.repsMin ?? set.reps) === (set.repsMax ?? set.reps)
                                           ? (set.repsMin ?? set.reps)
                                           : `${set.repsMin ?? set.reps}-${set.repsMax ?? set.reps}`
@@ -383,7 +385,7 @@ export default function StudentTrainingScreen() {
                                         styles.setRowValue,
                                         set.completed && styles.setRowValueCompleted,
                                         hasActualValues && isDifferent && styles.setRowValueModified,
-                                      ]}>
+                                      ]} numberOfLines={1}>
                                         {set.actualWeight ?? set.weight} kg
                                       </Text>
                                     </View>
@@ -752,6 +754,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     flex: 1,
+    minWidth: 0,
+  },
+  setInfoContainer: {
+    flex: 1,
+    minWidth: 0,
   },
   checkbox: {
     width: 24,
@@ -777,10 +784,11 @@ const styles = StyleSheet.create({
   setRowRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
+    flexShrink: 0,
   },
   setRowValue: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700' as const,
     color: colors.textSecondary,
   },
@@ -836,7 +844,7 @@ const styles = StyleSheet.create({
   valuesContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   editButton: {
     width: 36,
@@ -847,7 +855,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   plannedLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: colors.textSecondary,
     marginTop: 2,
   },
