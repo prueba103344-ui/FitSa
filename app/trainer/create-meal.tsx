@@ -190,30 +190,6 @@ export default function CreateMealScreen() {
     }
 
     console.log('[Macros] Calculando para ingredientes:', ingredients);
-
-    try {
-      const webhookUrl = 'https://fitsa.app.n8n.cloud/webhook-test/nutrition-webhook';
-      const payload = {
-        items: ingredients.map((ing) => ({
-          nombre: String(ing.name ?? '').trim(),
-          cantidad: coerceNumber(ing.quantity) ?? 0,
-          unidad: String(ing.unit ?? 'g').trim(),
-        })),
-      };
-      console.log('[Macros][Webhook] Enviando a n8n:', payload);
-      await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }).then(async (res) => {
-        const text = await res.text();
-        console.log('[Macros][Webhook] Respuesta status:', res.status, 'body:', text);
-      }).catch((e) => {
-        console.log('[Macros][Webhook] Error al enviar:', e);
-      });
-    } catch (e) {
-      console.log('[Macros][Webhook] Excepción no controlada:', e);
-    }
     setIsGeneratingMacros(true);
     try {
       const known = ingredients.filter((ing) => !!findNutritionItem(ing.name.toLowerCase()));
