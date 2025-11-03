@@ -55,11 +55,4 @@
       "typedRoutes": true
     }
   }
-}  {
-    "expo": {
-      "extra": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://lzmseawflhdujpwjodkm.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6bXNlYXdmbGhkdWpwd2pvZGttIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5OTEzMTQsImV4cCI6MjA3NzU2NzMxNH0.cSQDOsMAAkxo7eg3k1oQh-BvR-AIKcWbMELRrdN3uEA"
-      }
-    }
-  }
+}

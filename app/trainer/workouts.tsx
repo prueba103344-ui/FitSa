@@ -1,7 +1,7 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
-import { Plus, X, Trash2, Dumbbell, ImageUp, Search } from 'lucide-react-native';
+import { Plus, X, Trash2, Dumbbell, ImageUp } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { WorkoutPlan, Exercise, ExerciseSet, Trainer } from '@/types';
@@ -24,8 +24,6 @@ export default function TrainerWorkoutsScreen() {
   const [currentSets, setCurrentSets] = useState<ExerciseSet[]>([]);
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
   const [editingPlan, setEditingPlan] = useState<WorkoutPlan | null>(null);
-  const [pickerOpen, setPickerOpen] = useState<boolean>(false);
-  const [search, setSearch] = useState<string>('');
   const exercisesCatalog = trpc.exercises.list.useQuery(undefined, { staleTime: 60_000 });
 
   const trainer = currentUser as Trainer;
@@ -339,15 +337,7 @@ export default function TrainerWorkoutsScreen() {
                   onChangeText={setCurrentExercise}
                   placeholder="Nombre del ejercicio"
                   placeholderTextColor={colors.textSecondary}
-                  testID="exercise-name-input"
                 />
-
-                <TouchableOpacity style={styles.selectorButton} onPress={() => setPickerOpen(true)} testID="open-exercise-picker">
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Search color={colors.primary} size={18} />
-                    <Text style={styles.selectorButtonText}>Seleccionar ejercicio de la base</Text>
-                  </View>
-                </TouchableOpacity>
 
                 {currentSets.length > 0 && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -413,57 +403,6 @@ export default function TrainerWorkoutsScreen() {
                 <Text style={styles.saveButtonText}>Guardar Plan</Text>
               </TouchableOpacity>
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
-        <View style={styles.pickerOverlay}>
-          <View style={styles.pickerContent}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Seleccionar ejercicio</Text>
-              <TouchableOpacity onPress={() => setPickerOpen(false)}>
-                <X color={colors.white} size={22} />
-              </TouchableOpacity>
-            </View>
-
-            <TextInput
-              style={[styles.input, { marginBottom: 12 }]}
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Buscar ejercicio..."
-              placeholderTextColor={colors.textSecondary}
-              testID="exercise-search-input"
-            />
-
-            {exercisesCatalog.isLoading ? (
-              <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-                <ActivityIndicator color={colors.primary} />
-              </View>
-            ) : (
-              <ScrollView style={{ maxHeight: 420 }} contentContainerStyle={{ gap: 10 }}>
-                {(exercisesCatalog.data ?? [])
-                  .filter(it => it.name.toLowerCase().includes(search.trim().toLowerCase()))
-                  .map(it => (
-                    <TouchableOpacity
-                      key={it.id}
-                      style={styles.pickerItem}
-                      onPress={() => {
-                        setCurrentExercise(it.name);
-                        setCurrentExerciseImage(it.imageUrl);
-                        setPickerOpen(false);
-                      }}
-                      testID={`pick-ex-${it.id}`}
-                    >
-                      <Image source={{ uri: it.imageUrl }} style={styles.pickerThumb} />
-                      <Text style={styles.pickerItemText}>{it.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                {(exercisesCatalog.data ?? []).length === 0 && (
-                  <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>No hay ejercicios en la base todavía</Text>
-                )}
-              </ScrollView>
-            )}
           </View>
         </View>
       </Modal>
@@ -704,20 +643,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 12,
   },
-  selectorButton: {
-    backgroundColor: colors.cardLight,
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  selectorButtonText: {
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: '700' as const,
-  },
   addExerciseText: {
     fontSize: 14,
     color: colors.primary,
@@ -797,53 +722,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.white,
     fontWeight: '600' as const,
-  },
-  pickerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  pickerContent: {
-    width: '100%',
-    maxWidth: 520,
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  pickerTitle: {
-    fontSize: 18,
-    fontWeight: '800' as const,
-    color: colors.white,
-  },
-  pickerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: colors.cardLight,
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  pickerThumb: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
-  },
-  pickerItemText: {
-    flex: 1,
-    color: colors.white,
-    fontWeight: '700' as const,
-    fontSize: 15,
   },
 });
