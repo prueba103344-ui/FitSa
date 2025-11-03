@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { Plus, X, Trash2, Dumbbell, ImageUp, ChevronDown } from 'lucide-react-native';
@@ -364,10 +364,12 @@ export default function TrainerWorkoutsScreen() {
                             key={`${sug.name}-${i}`}
                             style={styles.suggestionItem}
                             activeOpacity={0.7}
+                            testID={`exercise-suggestion-${i}`}
                             onPress={() => {
                               setCurrentExercise(sug.name);
                               setCurrentExerciseImage(sug.imageUrl);
                               setShowSuggestions(false);
+                              try { Keyboard.dismiss(); } catch (_) { }
                             }}
                           >
                             <Image source={{ uri: sug.imageUrl }} style={styles.suggestionImage} />
