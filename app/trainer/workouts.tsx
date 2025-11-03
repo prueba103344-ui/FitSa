@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
-import { Plus, X, Trash2, Dumbbell, ImageUp } from 'lucide-react-native';
+import { Plus, X, Trash2, Dumbbell, ImageUp, ChevronDown } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { WorkoutPlan, Exercise, ExerciseSet, Trainer } from '@/types';
@@ -22,9 +22,23 @@ export default function TrainerWorkoutsScreen() {
   const [currentExerciseImage, setCurrentExerciseImage] = useState<string>('');
   const [picking, setPicking] = useState<boolean>(false);
   const [currentSets, setCurrentSets] = useState<ExerciseSet[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
   const [editingPlan, setEditingPlan] = useState<WorkoutPlan | null>(null);
   const exercisesCatalog = trpc.exercises.list.useQuery(undefined, { staleTime: 60_000 });
+  type CatalogItem = { id?: string; name: string; imageUrl: string };
+  const predefinedCatalog: CatalogItem[] = [
+    { name: 'Press Banca', imageUrl: 'https://training.fit/wp-content/uploads/2018/11/bankdruecken-flachbank-langhantel.png' },
+    { name: 'Aperturas polea', imageUrl: 'https://training.fit/wp-content/uploads/2020/02/fliegende-kabelzug.png' },
+    { name: 'Press pecho en maquina', imageUrl: 'https://training.fit/wp-content/uploads/2020/02/brustpresse-flach.png' },
+  ];
+  const combinedCatalog: CatalogItem[] = [
+    ...predefinedCatalog,
+    ...((exercisesCatalog.data ?? []).map((e) => ({ id: (e as any).id, name: (e as any).name as string, imageUrl: (e as any).imageUrl as string })) as CatalogItem[]),
+  ].filter((item, index, arr) => index === arr.findIndex((x) => x.name.toLowerCase() === item.name.toLowerCase()));
+  const filteredSuggestions: CatalogItem[] = combinedCatalog.filter((it) =>
+    currentExercise.trim().length > 0 && it.name.toLowerCase().includes(currentExercise.trim().toLowerCase())
+  ).slice(0, 6);
 
   const trainer = currentUser as Trainer;
   const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -60,7 +74,7 @@ export default function TrainerWorkoutsScreen() {
 
   useEffect(() => {
     try {
-      const list = exercisesCatalog.data ?? [];
+      const list = combinedCatalog;
       const key = currentExercise.trim().toLowerCase();
       const match = list.find(e => key !== '' && (e.name.toLowerCase() === key || key.includes(e.name.toLowerCase())));
       if (match && !currentExerciseImage) {
@@ -331,13 +345,39 @@ export default function TrainerWorkoutsScreen() {
               ))}
 
               <View style={styles.exerciseForm}>
-                <TextInput
-                  style={styles.input}
-                  value={currentExercise}
-                  onChangeText={setCurrentExercise}
-                  placeholder="Nombre del ejercicio"
-                  placeholderTextColor={colors.textSecondary}
-                />
+                <View>
+                  <TextInput
+                    style={styles.input}
+                    value={currentExercise}
+                    onChangeText={(t) => { setCurrentExercise(t); setShowSuggestions(true); }}
+                    placeholder="Nombre del ejercicio"
+                    placeholderTextColor={colors.textSecondary}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                    testID="exercise-name-input"
+                  />
+                  {showSuggestions && filteredSuggestions.length > 0 && (
+                    <View style={styles.suggestionsContainer} testID="exercise-suggestions">
+                      <ScrollView style={{ maxHeight: 220 }} keyboardShouldPersistTaps="handled">
+                        {filteredSuggestions.map((sug, i) => (
+                          <TouchableOpacity
+                            key={`${sug.name}-${i}`}
+                            style={styles.suggestionItem}
+                            activeOpacity={0.7}
+                            onPress={() => {
+                              setCurrentExercise(sug.name);
+                              setCurrentExerciseImage(sug.imageUrl);
+                              setShowSuggestions(false);
+                            }}
+                          >
+                            <Image source={{ uri: sug.imageUrl }} style={styles.suggestionImage} />
+                            <Text style={styles.suggestionText}>{sug.name}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
 
                 {currentSets.length > 0 && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -660,6 +700,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.white,
     fontWeight: '700' as const,
+  },
+  suggestionsContainer: {
+    position: 'absolute' as const,
+    top: 56,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    zIndex: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.cardLight,
+  },
+  suggestionImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: colors.cardLight,
+  },
+  suggestionText: {
+    flex: 1,
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600' as const,
   },
   planHeaderButton: {
     flex: 1,
