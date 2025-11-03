@@ -77,7 +77,7 @@ export default function TrainerWorkoutsScreen() {
     try {
       const list = combinedCatalog;
       const key = currentExercise.trim().toLowerCase();
-      const match = list.find(e => key !== '' && (e.name.toLowerCase() === key || key.includes(e.name.toLowerCase())));
+      const match = list.find(e => key !== '' && e.name.toLowerCase().startsWith(key));
       if (match && !currentExerciseImage) {
         setCurrentExerciseImage(match.imageUrl);
       }
@@ -364,10 +364,19 @@ export default function TrainerWorkoutsScreen() {
                     <View style={styles.suggestionsContainer} testID="exercise-suggestions">
                       <ScrollView style={{ maxHeight: 220 }} keyboardShouldPersistTaps="handled">
                         {filteredSuggestions.map((sug, i) => (
-                          <View
+                          <TouchableOpacity
                             key={`${sug.name}-${i}`}
                             style={styles.suggestionItem}
                             testID={`exercise-suggestion-${i}`}
+                            activeOpacity={0.8}
+                            onPress={() => {
+                              setIsPickingSuggestion(true);
+                              setCurrentExercise(sug.name);
+                              setCurrentExerciseImage(sug.imageUrl);
+                              setShowSuggestions(false);
+                              try { Keyboard.dismiss(); } catch (_) { }
+                              setTimeout(() => setIsPickingSuggestion(false), 150);
+                            }}
                           >
                             <Image source={{ uri: sug.imageUrl }} style={styles.suggestionImage} />
                             <Text style={styles.suggestionText}>{sug.name}</Text>
@@ -386,7 +395,7 @@ export default function TrainerWorkoutsScreen() {
                             >
                               <Text style={styles.selectButtonText}>Seleccionar</Text>
                             </TouchableOpacity>
-                          </View>
+                          </TouchableOpacity>
                         ))}
                       </ScrollView>
                     </View>
