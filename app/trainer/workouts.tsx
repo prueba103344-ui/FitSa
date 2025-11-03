@@ -364,23 +364,29 @@ export default function TrainerWorkoutsScreen() {
                     <View style={styles.suggestionsContainer} testID="exercise-suggestions">
                       <ScrollView style={{ maxHeight: 220 }} keyboardShouldPersistTaps="handled">
                         {filteredSuggestions.map((sug, i) => (
-                          <TouchableOpacity
+                          <View
                             key={`${sug.name}-${i}`}
                             style={styles.suggestionItem}
-                            activeOpacity={0.7}
                             testID={`exercise-suggestion-${i}`}
-                            onPressIn={() => {
-                              setIsPickingSuggestion(true);
-                              setCurrentExercise(sug.name);
-                              setCurrentExerciseImage(sug.imageUrl);
-                              setShowSuggestions(false);
-                              try { Keyboard.dismiss(); } catch (_) { }
-                              setTimeout(() => setIsPickingSuggestion(false), 150);
-                            }}
                           >
                             <Image source={{ uri: sug.imageUrl }} style={styles.suggestionImage} />
                             <Text style={styles.suggestionText}>{sug.name}</Text>
-                          </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.selectButton}
+                              activeOpacity={0.8}
+                              testID={`exercise-suggestion-select-${i}`}
+                              onPress={() => {
+                                setIsPickingSuggestion(true);
+                                setCurrentExercise(sug.name);
+                                setCurrentExerciseImage(sug.imageUrl);
+                                setShowSuggestions(false);
+                                try { Keyboard.dismiss(); } catch (_) { }
+                                setTimeout(() => setIsPickingSuggestion(false), 150);
+                              }}
+                            >
+                              <Text style={styles.selectButtonText}>Seleccionar</Text>
+                            </TouchableOpacity>
+                          </View>
                         ))}
                       </ScrollView>
                     </View>
@@ -732,6 +738,19 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.cardLight,
+  },
+  selectButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: colors.primary + '30',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  selectButtonText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '700' as const,
   },
   suggestionImage: {
     width: 40,
