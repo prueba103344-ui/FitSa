@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
-import { Plus, X, Trash2, Dumbbell, ImageUp, ChevronDown } from 'lucide-react-native';
+import { Plus, X, Trash2, Dumbbell, ImageUp, ChevronDown, Heart } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { WorkoutPlan, Exercise, ExerciseSet, Trainer } from '@/types';
@@ -19,6 +19,7 @@ export default function TrainerWorkoutsScreen() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [currentExercise, setCurrentExercise] = useState<string>('');
+  const [currentExerciseType, setCurrentExerciseType] = useState<'strength' | 'cardio'>('strength');
   const [currentExerciseImage, setCurrentExerciseImage] = useState<string>('');
   const [picking, setPicking] = useState<boolean>(false);
   const [currentSets, setCurrentSets] = useState<ExerciseSet[]>([]);
@@ -45,31 +46,48 @@ export default function TrainerWorkoutsScreen() {
   const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
   const handleAddSet = () => {
-    const newSet: ExerciseSet = {
-      set: currentSets.length + 1,
-      reps: 10,
-      repsMin: 8,
-      repsMax: 12,
-      weight: 0,
-      completed: false,
-    };
-    setCurrentSets([...currentSets, newSet]);
+    if (currentExerciseType === 'cardio') {
+      const newSet: ExerciseSet = {
+        set: currentSets.length + 1,
+        reps: 0,
+        weight: 0,
+        duration: 30,
+        intensity: 'media',
+        distance: 0,
+        completed: false,
+      };
+      setCurrentSets([...currentSets, newSet]);
+    } else {
+      const newSet: ExerciseSet = {
+        set: currentSets.length + 1,
+        reps: 10,
+        repsMin: 8,
+        repsMax: 12,
+        weight: 0,
+        completed: false,
+      };
+      setCurrentSets([...currentSets, newSet]);
+    }
   };
 
   const handleUpdateSet = (
     index: number,
-    field: 'reps' | 'repsMin' | 'repsMax' | 'weight',
+    field: 'reps' | 'repsMin' | 'repsMax' | 'weight' | 'duration' | 'intensity' | 'distance',
     value: string
   ) => {
     const updated = [...currentSets];
-    const numeric = parseInt(value) || 0;
-    const next = { ...updated[index], [field]: numeric } as ExerciseSet;
-    if (field === 'repsMin' || field === 'repsMax') {
-      const minVal = field === 'repsMin' ? numeric : (next.repsMin ?? updated[index].repsMin ?? updated[index].reps ?? 0);
-      const maxVal = field === 'repsMax' ? numeric : (next.repsMax ?? updated[index].repsMax ?? updated[index].reps ?? 0);
-      next.reps = Math.max(0, Math.round((minVal + maxVal) / 2));
+    if (field === 'intensity') {
+      updated[index] = { ...updated[index], intensity: value };
+    } else {
+      const numeric = parseInt(value) || 0;
+      const next = { ...updated[index], [field]: numeric } as ExerciseSet;
+      if (field === 'repsMin' || field === 'repsMax') {
+        const minVal = field === 'repsMin' ? numeric : (next.repsMin ?? updated[index].repsMin ?? updated[index].reps ?? 0);
+        const maxVal = field === 'repsMax' ? numeric : (next.repsMax ?? updated[index].repsMax ?? updated[index].reps ?? 0);
+        next.reps = Math.max(0, Math.round((minVal + maxVal) / 2));
+      }
+      updated[index] = next;
     }
-    updated[index] = next;
     setCurrentSets(updated);
   };
 
@@ -116,6 +134,7 @@ export default function TrainerWorkoutsScreen() {
     const newExercise: Exercise = {
       id: `ex${Date.now()}`,
       name: currentExercise,
+      type: currentExerciseType,
       sets: currentSets,
       imageUrl: currentExerciseImage || undefined,
     };
@@ -163,6 +182,7 @@ export default function TrainerWorkoutsScreen() {
     setExercises([]);
     setSelectedDays([]);
     setCurrentExercise('');
+    setCurrentExerciseType('strength');
     setCurrentSets([]);
     setCurrentExerciseImage('');
     setEditingPlan(null);
@@ -244,10 +264,14 @@ export default function TrainerWorkoutsScreen() {
                         {ex.sets.map((set, idx) => (
                           <View key={idx} style={styles.expandedSet}>
                             <Text style={styles.expandedSetText}>
-                              Serie {set.set}: {((set.repsMin ?? set.reps) === (set.repsMax ?? set.reps))
-                                ? `${set.repsMin ?? set.reps}`
-                                : `${set.repsMin ?? set.reps}-${set.repsMax ?? set.reps}`
-                              } reps × {set.weight}kg
+                              {ex.type === 'cardio' ? (
+                                `Serie ${set.set}: ${set.duration}min - ${set.intensity} - ${set.distance}km`
+                              ) : (
+                                `Serie ${set.set}: ${((set.repsMin ?? set.reps) === (set.repsMax ?? set.reps))
+                                  ? `${set.repsMin ?? set.reps}`
+                                  : `${set.repsMin ?? set.reps}-${set.repsMax ?? set.reps}`
+                                } reps × ${set.weight}kg`
+                              )}
                             </Text>
                           </View>
                         ))}
@@ -260,7 +284,11 @@ export default function TrainerWorkoutsScreen() {
                 <View style={styles.exercisesList}>
                   {plan.exercises.map((ex) => (
                     <View key={ex.id} style={styles.exerciseItem}>
-                      <Dumbbell color={colors.primary} size={16} />
+                      {ex.type === 'cardio' ? (
+                        <Heart color={colors.primary} size={16} />
+                      ) : (
+                        <Dumbbell color={colors.primary} size={16} />
+                      )}
                       <Text style={styles.exerciseName}>{ex.name}</Text>
                       <Text style={styles.exerciseSets}>{ex.sets.length} series</Text>
                     </View>
@@ -337,6 +365,11 @@ export default function TrainerWorkoutsScreen() {
               <Text style={styles.label}>Ejercicios</Text>
               {exercises.map((ex, idx) => (
                 <View key={ex.id} style={styles.addedExercise}>
+                  {ex.type === 'cardio' ? (
+                    <Heart color={colors.primary} size={16} />
+                  ) : (
+                    <Dumbbell color={colors.primary} size={16} />
+                  )}
                   <Text style={styles.addedExerciseName}>{ex.name}</Text>
                   <Text style={styles.addedExerciseSets}>{ex.sets.length} series</Text>
                   <TouchableOpacity onPress={() => setExercises(exercises.filter((_, i) => i !== idx))}>
@@ -346,6 +379,40 @@ export default function TrainerWorkoutsScreen() {
               ))}
 
               <View style={styles.exerciseForm}>
+                <Text style={styles.label}>Tipo de Ejercicio</Text>
+                <View style={styles.typeSelector}>
+                  <TouchableOpacity
+                    style={[
+                      styles.typeOption,
+                      currentExerciseType === 'strength' && styles.typeOptionSelected,
+                    ]}
+                    onPress={() => { setCurrentExerciseType('strength'); setCurrentSets([]); }}
+                  >
+                    <Dumbbell color={currentExerciseType === 'strength' ? colors.primary : colors.textSecondary} size={20} />
+                    <Text style={[
+                      styles.typeOptionText,
+                      currentExerciseType === 'strength' && styles.typeOptionTextSelected,
+                    ]}>
+                      Fuerza
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.typeOption,
+                      currentExerciseType === 'cardio' && styles.typeOptionSelected,
+                    ]}
+                    onPress={() => { setCurrentExerciseType('cardio'); setCurrentSets([]); }}
+                  >
+                    <Heart color={currentExerciseType === 'cardio' ? colors.primary : colors.textSecondary} size={20} />
+                    <Text style={[
+                      styles.typeOptionText,
+                      currentExerciseType === 'cardio' && styles.typeOptionTextSelected,
+                    ]}>
+                      Cardio
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
                 <View>
                   <TextInput
                     style={styles.input}
@@ -402,7 +469,7 @@ export default function TrainerWorkoutsScreen() {
                   )}
                 </View>
 
-                {currentSets.length > 0 && (
+                {currentSets.length > 0 && currentExerciseType === 'strength' && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                     <Text style={[styles.setText, { opacity: 0 }]}>{' '}</Text>
                     <Text style={{ flex: 0.9, color: colors.textSecondary, fontSize: 12, fontWeight: '600' as const }}>Reps mín</Text>
@@ -411,34 +478,81 @@ export default function TrainerWorkoutsScreen() {
                   </View>
                 )}
 
-                {currentSets.map((set, idx) => (
-                  <View key={idx} style={styles.setRow}>
-                    <Text style={styles.setText}>Serie {set.set}</Text>
-                    <TextInput
-                      style={[styles.setInput, { flex: 0.9 }]}
-                      value={(set.repsMin ?? set.reps).toString()}
-                      onChangeText={(val) => handleUpdateSet(idx, 'repsMin', val)}
-                      keyboardType="numeric"
-                      placeholder="Reps mín"
-                      placeholderTextColor={colors.textSecondary}
-                    />
-                    <TextInput
-                      style={[styles.setInput, { flex: 0.9 }]}
-                      value={(set.repsMax ?? set.reps).toString()}
-                      onChangeText={(val) => handleUpdateSet(idx, 'repsMax', val)}
-                      keyboardType="numeric"
-                      placeholder="Reps máx"
-                      placeholderTextColor={colors.textSecondary}
-                    />
-                    <TextInput
-                      style={styles.setInput}
-                      value={set.weight.toString()}
-                      onChangeText={(val) => handleUpdateSet(idx, 'weight', val)}
-                      keyboardType="numeric"
-                      placeholder="Kg"
-                      placeholderTextColor={colors.textSecondary}
-                    />
+                {currentSets.length > 0 && currentExerciseType === 'cardio' && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <Text style={[styles.setText, { opacity: 0 }]}>{' '}</Text>
+                    <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 12, fontWeight: '600' as const }}>Duración (min)</Text>
+                    <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 12, fontWeight: '600' as const }}>Intensidad</Text>
+                    <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 12, fontWeight: '600' as const }}>Km</Text>
                   </View>
+                )}
+
+                {currentSets.map((set, idx) => (
+                  currentExerciseType === 'strength' ? (
+                    <View key={idx} style={styles.setRow}>
+                      <Text style={styles.setText}>Serie {set.set}</Text>
+                      <TextInput
+                        style={[styles.setInput, { flex: 0.9 }]}
+                        value={(set.repsMin ?? set.reps).toString()}
+                        onChangeText={(val) => handleUpdateSet(idx, 'repsMin', val)}
+                        keyboardType="numeric"
+                        placeholder="Reps mín"
+                        placeholderTextColor={colors.textSecondary}
+                      />
+                      <TextInput
+                        style={[styles.setInput, { flex: 0.9 }]}
+                        value={(set.repsMax ?? set.reps).toString()}
+                        onChangeText={(val) => handleUpdateSet(idx, 'repsMax', val)}
+                        keyboardType="numeric"
+                        placeholder="Reps máx"
+                        placeholderTextColor={colors.textSecondary}
+                      />
+                      <TextInput
+                        style={styles.setInput}
+                        value={set.weight.toString()}
+                        onChangeText={(val) => handleUpdateSet(idx, 'weight', val)}
+                        keyboardType="numeric"
+                        placeholder="Kg"
+                        placeholderTextColor={colors.textSecondary}
+                      />
+                    </View>
+                  ) : (
+                    <View key={idx} style={styles.setRow}>
+                      <Text style={styles.setText}>Serie {set.set}</Text>
+                      <TextInput
+                        style={styles.setInput}
+                        value={(set.duration ?? 0).toString()}
+                        onChangeText={(val) => handleUpdateSet(idx, 'duration', val)}
+                        keyboardType="numeric"
+                        placeholder="Minutos"
+                        placeholderTextColor={colors.textSecondary}
+                      />
+                      <View style={styles.setInput}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            const intensities = ['baja', 'media', 'alta'];
+                            const current = set.intensity || 'media';
+                            const currentIdx = intensities.indexOf(current);
+                            const nextIdx = (currentIdx + 1) % intensities.length;
+                            handleUpdateSet(idx, 'intensity', intensities[nextIdx]);
+                          }}
+                          style={{ paddingVertical: 0 }}
+                        >
+                          <Text style={{ color: colors.white, fontSize: 14, textAlign: 'center' }}>
+                            {set.intensity || 'media'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                      <TextInput
+                        style={styles.setInput}
+                        value={(set.distance ?? 0).toString()}
+                        onChangeText={(val) => handleUpdateSet(idx, 'distance', val)}
+                        keyboardType="numeric"
+                        placeholder="Km"
+                        placeholderTextColor={colors.textSecondary}
+                      />
+                    </View>
+                  )
                 ))}
 
                 <TouchableOpacity style={styles.addSetButton} onPress={handleAddSet}>
@@ -655,6 +769,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     marginBottom: 8,
+    gap: 8,
   },
   addedExerciseName: {
     flex: 1,
@@ -834,5 +949,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.white,
     fontWeight: '600' as const,
+  },
+  typeSelector: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  typeOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: colors.cardLight,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  typeOptionSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '20',
+  },
+  typeOptionText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: '600' as const,
+  },
+  typeOptionTextSelected: {
+    color: colors.primary,
+    fontWeight: '700' as const,
   },
 });

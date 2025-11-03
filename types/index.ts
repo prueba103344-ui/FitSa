@@ -35,11 +35,18 @@ export interface ExerciseSet {
   completed?: boolean;
   actualReps?: number;
   actualWeight?: number;
+  duration?: number;
+  intensity?: string;
+  distance?: number;
+  actualDuration?: number;
+  actualIntensity?: string;
+  actualDistance?: number;
 }
 
 export interface Exercise {
   id: string;
   name: string;
+  type?: 'strength' | 'cardio';
   sets: ExerciseSet[];
   notes?: string;
   imageUrl?: string;
