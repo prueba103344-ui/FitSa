@@ -49,14 +49,23 @@ export default function CreateMealScreen() {
   const [newDirection, setNewDirection] = useState<string>('');
 
   const addIngredient = () => {
-    if (!newIngredientName || !newIngredientQuantity) {
-      Alert.alert('Error', 'Por favor completa todos los campos del ingrediente');
+    if (!newIngredientName || !newIngredientName.trim()) {
+      Alert.alert('Error', 'El nombre del ingrediente es obligatorio');
+      return;
+    }
+    if (!newIngredientQuantity || !newIngredientQuantity.trim()) {
+      Alert.alert('Error', 'La cantidad del ingrediente es obligatoria');
+      return;
+    }
+    const qty = parseFloat(newIngredientQuantity);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      Alert.alert('Error', 'La cantidad debe ser un número mayor a 0');
       return;
     }
 
     const ingredient: Ingredient = {
-      name: newIngredientName,
-      quantity: parseFloat(newIngredientQuantity),
+      name: newIngredientName.trim(),
+      quantity: qty,
       unit: newIngredientUnit,
       icon: '🥗',
     };
@@ -110,7 +119,7 @@ export default function CreateMealScreen() {
   }
 
   function scaleFromItem(item: NutritionItem, qty: number, unit: string): MacroTotals {
-    const baseUnit = item.per.unit; // g, ml, unidad
+    const baseUnit = item.per.unit;
     const normalized = normalizeUnit(unit);
     let factor = 1;
 
@@ -119,10 +128,10 @@ export default function CreateMealScreen() {
     } else if (baseUnit !== 'unidad' && normalized !== 'unidad') {
       factor = qty / item.per.amount;
     } else if (baseUnit === 'unidad' && normalized !== 'unidad') {
-      const approxPerUnitG = 50; // heuristic
+      const approxPerUnitG = 50;
       factor = qty / approxPerUnitG;
     } else if (baseUnit !== 'unidad' && normalized === 'unidad') {
-      const approxUnitG = 50; // heuristic
+      const approxUnitG = 50;
       factor = (qty * approxUnitG) / item.per.amount;
     }
 
@@ -149,13 +158,11 @@ export default function CreateMealScreen() {
           fat: acc.fat + scaled.fat,
         };
       }
-      // heuristic when unknown: assume 4 kcal/g for carbs/protein, 9 for fat
-      // Guess macronutrient split by keywords
       const key = ing.name.toLowerCase();
-      let p = 0.15, c = 0.7, f = 0.15; // default carb source
+      let p = 0.15, c = 0.7, f = 0.15;
       if (/(pollo|carne|pavo|atun|atún|huevo|claras|queso|yogur|tofu|prote)/.test(key)) p = 0.7, c = 0.05, f = 0.25;
       if (/(aceite|mantequilla|nuez|aguacate|almendra|cacahuete|oliva)/.test(key)) p = 0.05, c = 0.05, f = 0.9;
-      const grams = unit === 'unidad' ? qty * 50 : qty; // assume 1 unidad ~ 50g
+      const grams = unit === 'unidad' ? qty * 50 : qty;
       const kcal = grams * (p * 4 + c * 4 + f * 9);
       return {
         calories: acc.calories + kcal,
@@ -172,6 +179,17 @@ export default function CreateMealScreen() {
       return null;
     }
 
+    const invalidIngredients = ingredients.filter((ing) => {
+      const qty = coerceNumber(ing.quantity);
+      return !ing.name || !ing.name.trim() || !qty || qty <= 0;
+    });
+
+    if (invalidIngredients.length > 0) {
+      Alert.alert('Error', 'Todos los ingredientes deben tener nombre y cantidad válida');
+      return null;
+    }
+
+    console.log('[Macros] Calculando para ingredientes:', ingredients);
     setIsGeneratingMacros(true);
     try {
       const known = ingredients.filter((ing) => !!findNutritionItem(ing.name.toLowerCase()));
@@ -195,11 +213,11 @@ export default function CreateMealScreen() {
 
       if (unknown.length > 0) {
         const ingredientsList = unknown.map((ing) => ({
-          nombre: ing.name,
+          nombre: ing.name.trim(),
           cantidad: coerceNumber(ing.quantity) ?? 0,
           unidad: ing.unit ?? 'g',
         }));
-        console.log('Generando macros (solo desconocidos) para:', ingredientsList);
+        console.log('[Macros][IA] Enviando a IA:', ingredientsList);
 
         const schema = z.object({
           items: z.array(
@@ -221,22 +239,46 @@ export default function CreateMealScreen() {
                 {
                   type: 'text',
                   text:
-                    'Eres nutricionista. Para CADA ingrediente calcula macros usando EXACTAMENTE su cantidad y unidad dadas. NO normalices a 100g NI uses porciones genéricas. Si unidad = "unidad" y no hay mejor dato, asume 1 unidad ≈ 50g. Devuelve SOLO JSON con { items: [{ nombre, calories, protein, carbs, fat }] } donde calories son kcal totales para esa cantidad, y protein/carbs/fat en gramos para esa cantidad. Ejemplo entrada: [{"nombre":"queso fresco","cantidad":30,"unidad":"g"},{"nombre":"aceite de oliva","cantidad":10,"unidad":"ml"}] -> salida: {"items":[{"nombre":"queso fresco","calories":x,"protein":y,"carbs":z,"fat":w},{"nombre":"aceite de oliva","calories":a,"protein":b,"carbs":c,"fat":d}]}. Nunca devuelvas valores por 100g, siempre por la cantidad indicada.'
+                    'Eres nutricionista experto. Tu tarea es calcular los macronutrientes EXACTOS para cada ingrediente usando la cantidad y unidad especificadas.\n\n' +
+                    'REGLAS OBLIGATORIAS:\n' +
+                    '1. NOMBRE y CANTIDAD son OBLIGATORIOS para el cálculo\n' +
+                    '2. NUNCA normalices a 100g\n' +
+                    '3. NUNCA uses porciones genéricas\n' +
+                    '4. Calcula para la cantidad EXACTA proporcionada\n' +
+                    '5. Si la unidad es "unidad" y no conoces el peso exacto, asume 1 unidad ≈ 50g\n' +
+                    '6. Si la unidad es "ml", trata líquidos: agua/leche ~1g/ml, aceites ~0.92g/ml\n\n' +
+                    'Formato de salida JSON: { items: [{ nombre, calories, protein, carbs, fat }] }\n' +
+                    '- calories: kcal totales para ESA cantidad específica (NO por 100g)\n' +
+                    '- protein: gramos totales de proteína para ESA cantidad (NO por 100g)\n' +
+                    '- carbs: gramos totales de carbohidratos para ESA cantidad (NO por 100g)\n' +
+                    '- fat: gramos totales de grasa para ESA cantidad (NO por 100g)\n\n' +
+                    'EJEMPLO CORRECTO:\n' +
+                    'Entrada: [{"nombre":"arroz","cantidad":80,"unidad":"g"}]\n' +
+                    'Si arroz tiene 130 kcal y 28g carbs por 100g:\n' +
+                    'Salida: {"items":[{"nombre":"arroz","calories":104,"protein":2.08,"carbs":22.4,"fat":0.24}]}\n' +
+                    '(Calculado para 80g: 130*0.8=104 kcal, 28*0.8=22.4g carbs)\n\n' +
+                    'EJEMPLO INCORRECTO que NO debes hacer:\n' +
+                    'Salida: {"items":[{"nombre":"arroz","calories":130,...}]} <- ESTO ESTÁ MAL porque son valores por 100g'
                 },
-                { type: 'text', text: JSON.stringify(ingredientsList) },
+                { type: 'text', text: 'Ingredientes a analizar: ' + JSON.stringify(ingredientsList) },
               ],
             },
           ],
           schema,
         });
 
+        console.log('[Macros][IA] Respuesta de IA:', ai.items);
+
         unknownTotals = ai.items.reduce<MacroTotals>(
-          (acc, it) => ({
-            calories: acc.calories + (Number.isFinite(it.calories) ? it.calories : 0),
-            protein: acc.protein + (Number.isFinite(it.protein) ? it.protein : 0),
-            carbs: acc.carbs + (Number.isFinite(it.carbs) ? it.carbs : 0),
-            fat: acc.fat + (Number.isFinite(it.fat) ? it.fat : 0),
-          }),
+          (acc, it) => {
+            console.log(`[Macros][IA] Procesando ${it.nombre}: cal=${it.calories}, prot=${it.protein}g, carbs=${it.carbs}g, fat=${it.fat}g`);
+            return {
+              calories: acc.calories + (Number.isFinite(it.calories) ? it.calories : 0),
+              protein: acc.protein + (Number.isFinite(it.protein) ? it.protein : 0),
+              carbs: acc.carbs + (Number.isFinite(it.carbs) ? it.carbs : 0),
+              fat: acc.fat + (Number.isFinite(it.fat) ? it.fat : 0),
+            };
+          },
           { calories: 0, protein: 0, carbs: 0, fat: 0 }
         );
 
@@ -255,7 +297,9 @@ export default function CreateMealScreen() {
         fat: Math.round(knownTotals.fat + unknownTotals.fat),
       };
 
-      console.log('Macros combinados (DB + IA):', summed);
+      console.log('[Macros] Totales conocidos (DB):', knownTotals);
+      console.log('[Macros] Totales desconocidos (IA):', unknownTotals);
+      console.log('[Macros] TOTAL FINAL:', summed);
       return summed;
     } catch (error) {
       console.error('Error generating macros, using fallback 100% local:', error);
@@ -530,19 +574,21 @@ export default function CreateMealScreen() {
             ))}
 
             <View style={styles.addIngredientForm}>
+              <Text style={styles.label}>Nombre del ingrediente *</Text>
               <TextInput
                 style={[styles.input, styles.ingredientInput]}
                 value={newIngredientName}
                 onChangeText={setNewIngredientName}
-                placeholder="Nombre del ingrediente"
+                placeholder="Ej: Pollo, arroz, aceite..."
                 placeholderTextColor={colors.textSecondary}
               />
+              <Text style={styles.label}>Cantidad y Unidad *</Text>
               <View style={styles.quantityRow}>
                 <TextInput
                   style={[styles.input, styles.quantityInput]}
                   value={newIngredientQuantity}
                   onChangeText={setNewIngredientQuantity}
-                  placeholder="Cantidad"
+                  placeholder="Ej: 150"
                   keyboardType="numeric"
                   placeholderTextColor={colors.textSecondary}
                 />
@@ -550,7 +596,7 @@ export default function CreateMealScreen() {
                   style={[styles.input, styles.unitInput]}
                   value={newIngredientUnit}
                   onChangeText={setNewIngredientUnit}
-                  placeholder="Unidad"
+                  placeholder="g, ml, unidad"
                   placeholderTextColor={colors.textSecondary}
                 />
               </View>
