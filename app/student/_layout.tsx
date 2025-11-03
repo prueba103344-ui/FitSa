@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, TrendingUp, Settings, Apple, Dumbbell } from 'lucide-react-native';
+import { Home, TrendingUp, Settings, Apple, Dumbbell, ScanBarcode } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 
 export default function StudentLayout() {
@@ -42,6 +42,13 @@ export default function StudentLayout() {
         }}
       />
 
+      <Tabs.Screen
+        name="scan"
+        options={{
+          title: 'Scan',
+          tabBarIcon: ({ color, size }) => <ScanBarcode color={color} size={size} />,
+        }}
+      />
       <Tabs.Screen
         name="progress"
         options={{
