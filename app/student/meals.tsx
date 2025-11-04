@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { Student, Meal } from '@/types';
-import { Search, Heart, Clock, Flame, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Search, Heart, Clock, Flame, ChevronLeft, ChevronRight, Plus } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
@@ -203,6 +203,15 @@ export default function StudentMealsScreen() {
             </View>
           )}
         </ScrollView>
+        
+        <TouchableOpacity 
+          style={styles.fabButton}
+          onPress={() => router.push({ pathname: '/student/add-food', params: { day: selectedDay } })}
+          activeOpacity={0.9}
+          testID="add-food-button"
+        >
+          <Plus size={28} color={colors.background} strokeWidth={3} />
+        </TouchableOpacity>
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
@@ -409,5 +418,21 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center' as const,
     marginTop: 40,
+  },
+  fabButton: {
+    position: 'absolute' as const,
+    right: 20,
+    bottom: 20,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });

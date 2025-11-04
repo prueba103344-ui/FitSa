@@ -100,7 +100,7 @@ export interface Meal {
   time?: string;
   imageUrl?: string;
   prepTime?: number;
-  type?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  type?: 'breakfast' | 'mid-morning' | 'lunch' | 'snack' | 'dinner';
   ingredients?: Ingredient[];
   directions?: Direction[];
   description?: string;
