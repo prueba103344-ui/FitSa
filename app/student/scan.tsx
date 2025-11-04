@@ -6,13 +6,15 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { X, ScanBarcode, AlertCircle } from 'lucide-react-native';
+import { X, ScanBarcode, AlertCircle, History, Trash2, Clock } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { generateText } from '@rork/toolkit-sdk';
+import { useApp } from '@/contexts/AppContext';
 
 interface ProductAnalysis {
   score: number;
@@ -30,11 +32,13 @@ interface ProductAnalysis {
 export default function ScanScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { scanHistory, addScannedProduct, deleteScannedProduct, clearScanHistory } = useApp();
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState<boolean>(true);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analysis, setAnalysis] = useState<ProductAnalysis | null>(null);
   const [error, setError] = useState<string>('');
+  const [showHistory, setShowHistory] = useState<boolean>(false);
 
   if (!permission) {
     return (
@@ -55,7 +59,7 @@ export default function ScanScreen() {
             <X color={colors.white} size={24} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Escanear Producto</Text>
-          <View style={styles.placeholder} />
+          <View style={styles.historyButton} />
         </View>
         <View style={styles.permissionContainer}>
           <AlertCircle size={64} color={colors.accent} />
@@ -90,6 +94,16 @@ export default function ScanScreen() {
 
       const aiAnalysis = await analyzeProduct(productInfo);
       setAnalysis(aiAnalysis);
+      
+      await addScannedProduct({
+        barcode: data,
+        productName: aiAnalysis.productName || 'Producto desconocido',
+        score: aiAnalysis.score,
+        reason: aiAnalysis.reason,
+        ingredients: aiAnalysis.ingredients,
+        macros: aiAnalysis.macros,
+        studentId: '',
+      });
     } catch (err: any) {
       console.error('Error analyzing product:', err);
       setError(err?.message || 'Error al analizar el producto');
@@ -209,6 +223,66 @@ Razón: [Explicación detallada con emojis relevantes, sin usar asteriscos. Usa 
     setIsScanning(true);
     setAnalysis(null);
     setError('');
+    setShowHistory(false);
+  };
+
+  const handleDeleteHistory = (productId: string) => {
+    Alert.alert(
+      'Eliminar producto',
+      '¿Estás seguro de que quieres eliminar este producto del historial?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => deleteScannedProduct(productId),
+        },
+      ]
+    );
+  };
+
+  const handleClearHistory = () => {
+    Alert.alert(
+      'Limpiar historial',
+      '¿Estás seguro de que quieres eliminar todo el historial de escaneos?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Limpiar',
+          style: 'destructive',
+          onPress: () => clearScanHistory(),
+        },
+      ]
+    );
+  };
+
+  const viewHistoryItem = (product: any) => {
+    setAnalysis({
+      score: product.score,
+      reason: product.reason,
+      productName: product.productName,
+      ingredients: product.ingredients,
+      macros: product.macros,
+    });
+    setShowHistory(false);
+    setIsScanning(false);
+  };
+
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Hace un momento';
+    if (diffMins < 60) return `Hace ${diffMins} min`;
+    if (diffHours < 24) return `Hace ${diffHours}h`;
+    if (diffDays === 1) return 'Ayer';
+    if (diffDays < 7) return `Hace ${diffDays} días`;
+    
+    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
   };
 
   const getScoreColor = (score: number) => {
@@ -232,10 +306,76 @@ Razón: [Explicación detallada con emojis relevantes, sin usar asteriscos. Usa 
           <X color={colors.white} size={24} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Escanear Producto</Text>
-        <View style={styles.placeholder} />
+        <TouchableOpacity 
+          onPress={() => setShowHistory(!showHistory)} 
+          style={styles.historyButton}
+        >
+          <History color={colors.white} size={24} />
+        </TouchableOpacity>
       </View>
 
-      {isScanning && !analysis && (
+      {showHistory && (
+        <ScrollView 
+          style={styles.historyContainer}
+          contentContainerStyle={[styles.historyContent, { paddingBottom: insets.bottom + 20 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.historyHeader}>
+            <Text style={styles.historyTitle}>Historial de Escaneos</Text>
+            {scanHistory.length > 0 && (
+              <TouchableOpacity onPress={handleClearHistory}>
+                <Text style={styles.clearHistoryText}>Limpiar todo</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {scanHistory.length === 0 ? (
+            <View style={styles.emptyHistoryContainer}>
+              <History size={64} color={colors.textSecondary} />
+              <Text style={styles.emptyHistoryTitle}>Sin historial</Text>
+              <Text style={styles.emptyHistoryText}>
+                Escanea productos para ver tu historial aquí
+              </Text>
+            </View>
+          ) : (
+            scanHistory
+              .slice()
+              .reverse()
+              .map((product) => (
+                <TouchableOpacity
+                  key={product.id}
+                  style={styles.historyItem}
+                  onPress={() => viewHistoryItem(product)}
+                >
+                  <View style={styles.historyItemLeft}>
+                    <View style={[styles.historyScoreBadge, { backgroundColor: getScoreColor(product.score) }]}>
+                      <Text style={styles.historyScoreText}>{product.score}</Text>
+                    </View>
+                    <View style={styles.historyItemInfo}>
+                      <Text style={styles.historyItemName} numberOfLines={1}>
+                        {product.productName}
+                      </Text>
+                      <View style={styles.historyItemMeta}>
+                        <Clock size={12} color={colors.textSecondary} />
+                        <Text style={styles.historyItemDate}>
+                          {formatDate(product.scannedAt)}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleDeleteHistory(product.id)}
+                    style={styles.deleteHistoryButton}
+                  >
+                    <Trash2 size={18} color={colors.error} />
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              ))
+          )}
+        </ScrollView>
+      )}
+
+      {!showHistory && isScanning && !analysis && (
         <>
           <CameraView
             style={styles.camera}
@@ -262,7 +402,7 @@ Razón: [Explicación detallada con emojis relevantes, sin usar asteriscos. Usa 
         </>
       )}
 
-      {isAnalyzing && (
+      {!showHistory && isAnalyzing && (
         <View style={styles.analyzingContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
           <Text style={styles.analyzingText}>Analizando producto...</Text>
@@ -272,7 +412,7 @@ Razón: [Explicación detallada con emojis relevantes, sin usar asteriscos. Usa 
         </View>
       )}
 
-      {error && !analysis && !isScanning && (
+      {!showHistory && error && !analysis && !isScanning && (
         <View style={styles.errorContainer}>
           <AlertCircle size={64} color={colors.error} />
           <Text style={styles.errorTitle}>Error</Text>
@@ -283,7 +423,7 @@ Razón: [Explicación detallada con emojis relevantes, sin usar asteriscos. Usa 
         </View>
       )}
 
-      {analysis && (
+      {!showHistory && analysis && (
         <ScrollView 
           style={styles.resultsContainer}
           contentContainerStyle={[styles.resultsContent, { paddingBottom: insets.bottom + 20 }]}
@@ -385,8 +525,13 @@ const styles = StyleSheet.create({
     fontWeight: '800' as const,
     color: colors.white,
   },
-  placeholder: {
+  historyButton: {
     width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   loadingContainer: {
     flex: 1,
@@ -669,5 +814,94 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800' as const,
     color: colors.background,
+  },
+  historyContainer: {
+    flex: 1,
+  },
+  historyContent: {
+    padding: 20,
+    gap: 16,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  historyTitle: {
+    fontSize: 24,
+    fontWeight: '800' as const,
+    color: colors.white,
+  },
+  clearHistoryText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: colors.error,
+  },
+  emptyHistoryContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+    gap: 16,
+  },
+  emptyHistoryTitle: {
+    fontSize: 20,
+    fontWeight: '800' as const,
+    color: colors.white,
+  },
+  emptyHistoryText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center' as const,
+  },
+  historyItem: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  historyItemLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  historyScoreBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyScoreText: {
+    fontSize: 18,
+    fontWeight: '900' as const,
+    color: colors.background,
+  },
+  historyItemInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  historyItemName: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: colors.white,
+  },
+  historyItemMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  historyItemDate: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  deleteHistoryButton: {
+    padding: 8,
   },
 });

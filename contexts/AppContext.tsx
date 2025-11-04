@@ -3,6 +3,23 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, Student, Trainer, WorkoutPlan, DietPlan, DailyProgress } from '@/types';
 
+export interface ScannedProduct {
+  id: string;
+  barcode: string;
+  productName: string;
+  score: number;
+  reason: string;
+  ingredients?: string;
+  macros?: {
+    calories?: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+  };
+  scannedAt: string;
+  studentId: string;
+}
+
 const BASE_KEYS = {
   CURRENT_USER: '@fitsa_current_user',
   PROGRESS: '@fitsa_progress',
@@ -11,6 +28,7 @@ const BASE_KEYS = {
   WORKOUTS: '@fitsa_workouts',
   DIETS: '@fitsa_diets',
   ADMIN_AUTHED: '@fitsa_admin_authed',
+  SCAN_HISTORY: '@fitsa_scan_history',
 };
 
 interface StoredUser {
@@ -30,18 +48,20 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const [progress, setProgress] = useState<DailyProgress[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAdminAuthed, setIsAdminAuthed] = useState<boolean>(false);
+  const [scanHistory, setScanHistory] = useState<ScannedProduct[]>([]);
 
   const getKey = useCallback((k: keyof typeof BASE_KEYS) => BASE_KEYS[k], []);
 
   const loadData = useCallback(async () => {
     try {
-      const [storedUser, storedProgress, storedStudents, storedWorkouts, storedDiets, adminFlag] = await Promise.all([
+      const [storedUser, storedProgress, storedStudents, storedWorkouts, storedDiets, adminFlag, storedScanHistory] = await Promise.all([
         AsyncStorage.getItem(getKey('CURRENT_USER')),
         AsyncStorage.getItem(getKey('PROGRESS')),
         AsyncStorage.getItem(getKey('STUDENTS')),
         AsyncStorage.getItem(getKey('WORKOUTS')),
         AsyncStorage.getItem(getKey('DIETS')),
         AsyncStorage.getItem(getKey('ADMIN_AUTHED')),
+        AsyncStorage.getItem(getKey('SCAN_HISTORY')),
       ]);
 
       const parsedUser: User | null = storedUser ? JSON.parse(storedUser) : null;
@@ -49,6 +69,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       const parsedStudents: Student[] = storedStudents ? JSON.parse(storedStudents) : [];
       const parsedWorkouts: WorkoutPlan[] = storedWorkouts ? JSON.parse(storedWorkouts) : [];
       const parsedDiets: DietPlan[] = storedDiets ? JSON.parse(storedDiets) : [];
+      const parsedScanHistory: ScannedProduct[] = storedScanHistory ? JSON.parse(storedScanHistory) : [];
 
       setIsAdminAuthed(adminFlag === '1');
 
@@ -68,6 +89,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
       }
 
       setProgress(parsedProgress);
+      
+      if (parsedUser?.role === 'student') {
+        const studentHistory = parsedScanHistory.filter(s => s.studentId === parsedUser.id);
+        setScanHistory(studentHistory);
+      } else {
+        setScanHistory([]);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -200,6 +228,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       setWorkoutPlans([]);
       setDietPlans([]);
       setProgress([]);
+      setScanHistory([]);
     } catch (error) {
       console.error('Error logging out:', error);
     }
@@ -452,6 +481,61 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }
   }, [dietPlans, getKey]);
 
+  const addScannedProduct = useCallback(async (product: Omit<ScannedProduct, 'id' | 'scannedAt'>) => {
+    try {
+      if (!currentUser || currentUser.role !== 'student') {
+        throw new Error('Solo los estudiantes pueden escanear productos');
+      }
+
+      const newProduct: ScannedProduct = {
+        ...product,
+        id: `scan_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+        scannedAt: new Date().toISOString(),
+        studentId: currentUser.id,
+      };
+
+      const historyData = await AsyncStorage.getItem(getKey('SCAN_HISTORY'));
+      const allHistory: ScannedProduct[] = historyData ? JSON.parse(historyData) : [];
+      allHistory.push(newProduct);
+      await AsyncStorage.setItem(getKey('SCAN_HISTORY'), JSON.stringify(allHistory));
+
+      const updated = [...scanHistory, newProduct];
+      setScanHistory(updated);
+      
+      return newProduct;
+    } catch (error) {
+      console.error('Error adding scanned product:', error);
+      throw error;
+    }
+  }, [currentUser, scanHistory, getKey]);
+
+  const deleteScannedProduct = useCallback(async (productId: string) => {
+    try {
+      const historyData = await AsyncStorage.getItem(getKey('SCAN_HISTORY'));
+      const allHistory: ScannedProduct[] = historyData ? JSON.parse(historyData) : [];
+      const updatedAll = allHistory.filter(p => p.id !== productId);
+      await AsyncStorage.setItem(getKey('SCAN_HISTORY'), JSON.stringify(updatedAll));
+      const updated = scanHistory.filter(p => p.id !== productId);
+      setScanHistory(updated);
+    } catch (error) {
+      console.error('Error deleting scanned product:', error);
+    }
+  }, [scanHistory, getKey]);
+
+  const clearScanHistory = useCallback(async () => {
+    try {
+      if (!currentUser || currentUser.role !== 'student') return;
+      
+      const historyData = await AsyncStorage.getItem(getKey('SCAN_HISTORY'));
+      const allHistory: ScannedProduct[] = historyData ? JSON.parse(historyData) : [];
+      const updatedAll = allHistory.filter(p => p.studentId !== currentUser.id);
+      await AsyncStorage.setItem(getKey('SCAN_HISTORY'), JSON.stringify(updatedAll));
+      setScanHistory([]);
+    } catch (error) {
+      console.error('Error clearing scan history:', error);
+    }
+  }, [currentUser, getKey]);
+
   return useMemo(() => ({
     currentUser,
     students,
@@ -460,6 +544,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     progress,
     isLoading,
     isAdminAuthed,
+    scanHistory,
     adminLogin,
     adminLogout,
     registerTrainer,
@@ -479,6 +564,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
     getTodayProgress,
     getTodayWorkout,
     getTodayDiet,
+    addScannedProduct,
+    deleteScannedProduct,
+    clearScanHistory,
   }), [
     currentUser,
     students,
@@ -487,6 +575,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     progress,
     isLoading,
     isAdminAuthed,
+    scanHistory,
     adminLogin,
     adminLogout,
     registerTrainer,
@@ -506,5 +595,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
     getTodayProgress,
     getTodayWorkout,
     getTodayDiet,
+    addScannedProduct,
+    deleteScannedProduct,
+    clearScanHistory,
   ]);
 });
