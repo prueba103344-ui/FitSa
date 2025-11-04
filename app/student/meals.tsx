@@ -13,6 +13,8 @@ export default function StudentMealsScreen() {
   const params = useLocalSearchParams();
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay());
 
+  console.log('[StudentMeals] dietPlans:', dietPlans.length, 'currentUser:', currentUser?.id);
+
   useEffect(() => {
     if (params.day !== undefined) {
       setSelectedDay(parseInt(params.day as string));
@@ -36,6 +38,7 @@ export default function StudentMealsScreen() {
 
   const student = currentUser as Student;
   const studentDiet = dietPlans.find(plan => plan.studentId === student.id && (!plan.dayOfWeek || plan.dayOfWeek === selectedDay));
+  console.log('[StudentMeals] Found diet:', studentDiet?.id, 'meals:', studentDiet?.meals.length || 0);
   const allMeals = studentDiet?.meals || [];
 
   const filteredMeals = allMeals.filter(meal => {

@@ -76,12 +76,15 @@ export const [AppProvider, useApp] = createContextHook(() => {
       if (parsedUser?.role === 'trainer') {
         const trainerStudents = parsedStudents.filter(s => s.trainerId === parsedUser.id);
         setStudents(trainerStudents);
+        setWorkoutPlans(parsedWorkouts);
+        setDietPlans(parsedDiets);
         const trainerObj: Trainer = { ...(parsedUser as Trainer), clients: trainerStudents };
         setCurrentUser(trainerObj as unknown as User);
       } else if (parsedUser?.role === 'student') {
         setCurrentUser(parsedUser);
         const studentWorkouts = parsedWorkouts.filter(w => w.studentId === parsedUser.id);
         const studentDiets = parsedDiets.filter(d => d.studentId === parsedUser.id);
+        console.log('[AppContext] Loading student diets:', studentDiets.length);
         setWorkoutPlans(studentWorkouts);
         setDietPlans(studentDiets);
       } else {
@@ -324,6 +327,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       const allDiets: DietPlan[] = dietsData ? JSON.parse(dietsData) : [];
       allDiets.push(plan);
       await AsyncStorage.setItem(getKey('DIETS'), JSON.stringify(allDiets));
+      console.log('[AppContext] Added diet plan for student:', plan.studentId);
       const updated = [...dietPlans, plan];
       setDietPlans(updated);
     } catch (error) {

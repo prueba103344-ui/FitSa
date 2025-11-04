@@ -7,11 +7,13 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { X, ScanBarcode, AlertCircle, History, Trash2, Clock } from 'lucide-react-native';
+import { X, ScanBarcode, AlertCircle, History, Trash2, Clock, Plus } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { generateText } from '@rork/toolkit-sdk';
 import { useApp } from '@/contexts/AppContext';
@@ -32,13 +34,17 @@ interface ProductAnalysis {
 export default function ScanScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { scanHistory, addScannedProduct, deleteScannedProduct, clearScanHistory } = useApp();
+  const { scanHistory, addScannedProduct, deleteScannedProduct, clearScanHistory, currentUser, dietPlans, updateDietPlan } = useApp();
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState<boolean>(true);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analysis, setAnalysis] = useState<ProductAnalysis | null>(null);
   const [error, setError] = useState<string>('');
   const [showHistory, setShowHistory] = useState<boolean>(false);
+  const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [addQuantity, setAddQuantity] = useState<string>('100');
+  const [addMealType, setAddMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | 'mid-morning'>('breakfast');
+  const [isAddingToDiet, setIsAddingToDiet] = useState<boolean>(false);
 
   if (!permission) {
     return (
@@ -299,6 +305,102 @@ Razón: [Explicación detallada con emojis relevantes, sin usar asteriscos. Usa 
     return 'Poco Saludable';
   };
 
+  const openAddToDietModal = () => {
+    setShowAddModal(true);
+    setAddQuantity('100');
+    setAddMealType('breakfast');
+  };
+
+  const addProductToDiet = async () => {
+    if (!analysis || !currentUser || currentUser.role !== 'student') {
+      Alert.alert('Error', 'No se puede añadir el producto');
+      return;
+    }
+
+    const quantity = parseFloat(addQuantity);
+    if (!quantity || quantity <= 0) {
+      Alert.alert('Error', 'Por favor ingresa una cantidad válida');
+      return;
+    }
+
+    setIsAddingToDiet(true);
+
+    try {
+      const multiplier = quantity / 100;
+      const newFood = {
+        name: analysis.productName || 'Producto',
+        calories: Math.round((analysis.macros?.calories || 0) * multiplier),
+        protein: parseFloat(((analysis.macros?.protein || 0) * multiplier).toFixed(1)),
+        carbs: parseFloat(((analysis.macros?.carbs || 0) * multiplier).toFixed(1)),
+        fat: parseFloat(((analysis.macros?.fat || 0) * multiplier).toFixed(1)),
+        quantity,
+        unit: 'g' as const,
+        plannedQuantity: quantity,
+        plannedCalories: Math.round((analysis.macros?.calories || 0) * multiplier),
+        plannedProtein: parseFloat(((analysis.macros?.protein || 0) * multiplier).toFixed(1)),
+        plannedCarbs: parseFloat(((analysis.macros?.carbs || 0) * multiplier).toFixed(1)),
+        plannedFat: parseFloat(((analysis.macros?.fat || 0) * multiplier).toFixed(1)),
+      };
+
+      const studentDiet = dietPlans.find(d => d.studentId === currentUser.id);
+      
+      if (!studentDiet) {
+        Alert.alert('Error', 'No hay plan de dieta asignado');
+        setIsAddingToDiet(false);
+        return;
+      }
+
+      const mealTypeLabels: Record<typeof addMealType, string> = {
+        breakfast: 'Desayuno',
+        'mid-morning': 'Almuerzo',
+        lunch: 'Comida',
+        snack: 'Merienda',
+        dinner: 'Cena',
+      };
+
+      const existingMeal = studentDiet.meals.find(m => m.type === addMealType);
+
+      if (existingMeal) {
+        existingMeal.foods.push(newFood);
+
+        await updateDietPlan(studentDiet.id, {
+          meals: studentDiet.meals,
+          totalCalories: studentDiet.totalCalories + newFood.calories,
+          totalProtein: studentDiet.totalProtein + newFood.protein,
+          totalCarbs: studentDiet.totalCarbs + newFood.carbs,
+          totalFat: studentDiet.totalFat + newFood.fat,
+        });
+      } else {
+        const mealId = `meal_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        const newMeal = {
+          id: mealId,
+          name: mealTypeLabels[addMealType],
+          type: addMealType,
+          foods: [newFood],
+          imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600',
+        };
+
+        studentDiet.meals.push(newMeal);
+
+        await updateDietPlan(studentDiet.id, {
+          meals: studentDiet.meals,
+          totalCalories: studentDiet.totalCalories + newFood.calories,
+          totalProtein: studentDiet.totalProtein + newFood.protein,
+          totalCarbs: studentDiet.totalCarbs + newFood.carbs,
+          totalFat: studentDiet.totalFat + newFood.fat,
+        });
+      }
+
+      setShowAddModal(false);
+      Alert.alert('¡Éxito!', 'Producto añadido a tu dieta');
+    } catch (error) {
+      console.error('Error adding product to diet:', error);
+      Alert.alert('Error', 'No se pudo añadir el producto a tu dieta');
+    } finally {
+      setIsAddingToDiet(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
@@ -486,12 +588,102 @@ Razón: [Explicación detallada con emojis relevantes, sin usar asteriscos. Usa 
             </View>
           )}
 
-          <TouchableOpacity style={styles.scanAgainButton} onPress={resetScan}>
-            <ScanBarcode size={20} color={colors.background} />
-            <Text style={styles.scanAgainButtonText}>Escanear otro producto</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonsContainer}>
+            <TouchableOpacity 
+              style={styles.addToDietButton} 
+              onPress={openAddToDietModal}
+              activeOpacity={0.8}
+            >
+              <Plus size={20} color={colors.background} />
+              <Text style={styles.addToDietButtonText}>Añadir a mi Dieta</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.scanAgainButton} onPress={resetScan}>
+              <ScanBarcode size={20} color={colors.white} />
+              <Text style={styles.scanAgainButtonText}>Escanear otro producto</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       )}
+
+      <Modal
+        visible={showAddModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Añadir a Dieta</Text>
+              <TouchableOpacity onPress={() => setShowAddModal(false)}>
+                <X size={24} color={colors.white} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalProductName}>{analysis?.productName}</Text>
+
+            <View style={styles.modalSection}>
+              <Text style={styles.modalLabel}>Cantidad (gramos)</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="100"
+                placeholderTextColor={colors.textSecondary}
+                value={addQuantity}
+                onChangeText={setAddQuantity}
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={styles.modalSection}>
+              <Text style={styles.modalLabel}>Tipo de Comida</Text>
+              <View style={styles.mealTypesContainer}>
+                {[
+                  { value: 'breakfast', label: '🌅 Desayuno' },
+                  { value: 'mid-morning', label: '🍎 Almuerzo' },
+                  { value: 'lunch', label: '🍽️ Comida' },
+                  { value: 'snack', label: '🥤 Merienda' },
+                  { value: 'dinner', label: '🌙 Cena' },
+                ].map((type) => (
+                  <TouchableOpacity
+                    key={type.value}
+                    style={[
+                      styles.mealTypeBtn,
+                      addMealType === type.value && styles.mealTypeBtnActive,
+                    ]}
+                    onPress={() => setAddMealType(type.value as typeof addMealType)}
+                  >
+                    <Text
+                      style={[
+                        styles.mealTypeBtnText,
+                        addMealType === type.value && styles.mealTypeBtnTextActive,
+                      ]}
+                    >
+                      {type.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.modalAddButton}
+              onPress={addProductToDiet}
+              disabled={isAddingToDiet}
+              activeOpacity={0.8}
+            >
+              {isAddingToDiet ? (
+                <ActivityIndicator color={colors.background} />
+              ) : (
+                <>
+                  <Plus size={20} color={colors.background} />
+                  <Text style={styles.modalAddButtonText}>Añadir a Dieta</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -801,7 +993,10 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 22,
   },
-  scanAgainButton: {
+  buttonsContainer: {
+    gap: 12,
+  },
+  addToDietButton: {
     backgroundColor: colors.accent,
     borderRadius: 16,
     padding: 18,
@@ -810,10 +1005,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 12,
   },
-  scanAgainButtonText: {
+  addToDietButtonText: {
     fontSize: 16,
     fontWeight: '800' as const,
     color: colors.background,
+  },
+  scanAgainButton: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  scanAgainButtonText: {
+    fontSize: 16,
+    fontWeight: '800' as const,
+    color: colors.white,
   },
   historyContainer: {
     flex: 1,
@@ -903,5 +1114,88 @@ const styles = StyleSheet.create({
   },
   deleteHistoryButton: {
     padding: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    gap: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '800' as const,
+    color: colors.white,
+  },
+  modalProductName: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: colors.textSecondary,
+  },
+  modalSection: {
+    gap: 12,
+  },
+  modalLabel: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: colors.white,
+  },
+  modalInput: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  mealTypesContainer: {
+    gap: 10,
+  },
+  mealTypeBtn: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  mealTypeBtnActive: {
+    backgroundColor: colors.primary + '20',
+    borderColor: colors.primary,
+  },
+  mealTypeBtnText: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: colors.textSecondary,
+    textAlign: 'center' as const,
+  },
+  mealTypeBtnTextActive: {
+    color: colors.primary,
+  },
+  modalAddButton: {
+    backgroundColor: colors.accent,
+    borderRadius: 16,
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  modalAddButtonText: {
+    fontSize: 18,
+    fontWeight: '900' as const,
+    color: colors.background,
   },
 });
