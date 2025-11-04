@@ -127,7 +127,7 @@ export default function ScanScreen() {
   };
 
   const analyzeProduct = async (productInfo: any): Promise<ProductAnalysis> => {
-    const prompt = `Analiza el siguiente producto alimenticio y proporciona una puntuación de salud del 0 al 10 y una explicación detallada.
+    const prompt = `Eres un nutricionista experto. Analiza este producto alimenticio y proporciona una puntuación de salud PRECISA del 0 al 10 basándote ESTRICTAMENTE en los valores nutricionales e ingredientes reales.
 
 Nombre del producto: ${productInfo.name}
 Ingredientes: ${productInfo.ingredients}
@@ -139,28 +139,49 @@ Información nutricional por 100g:
 - Azúcares: ${productInfo.sugar || 'N/A'} g
 - Fibra: ${productInfo.fiber || 'N/A'} g
 - Sodio: ${productInfo.sodium || 'N/A'} g
+- Grado nutricional: ${productInfo.nutritionGrade || 'N/A'}
 
-Por favor proporciona:
-1. Una puntuación del 0 al 10 (donde 10 es muy saludable y 0 es muy poco saludable)
-2. Una explicación clara y concisa de por qué tiene esa puntuación, considerando:
-   - Calidad de los ingredientes
-   - Balance de macronutrientes
-   - Presencia de aditivos o ingredientes procesados
-   - Contenido de azúcar, sodio, grasas saturadas
-   - Valor nutricional general
+Criterios de puntuación ESTRICTOS:
+- 9-10: Alimentos muy saludables (verduras, frutas frescas, legumbres, proteína magra limpia)
+- 7-8: Alimentos saludables con procesamiento mínimo
+- 5-6: Alimentos moderadamente procesados, pero aceptables
+- 3-4: Alimentos altamente procesados, alto en azúcar/sodio/grasa saturada
+- 0-2: Alimentos muy poco saludables (comida chatarra, ultraprocesados, alto en aditivos)
 
-Formato de respuesta (texto plano):
-Puntuación: [número del 0-10]
-Razón: [explicación detallada]`;
+Penaliza fuertemente:
+- Alto contenido de azúcar (>15g/100g): -2 puntos
+- Alto contenido de sodio (>1g/100g): -2 puntos
+- Grasas saturadas altas: -1.5 puntos
+- Ingredientes ultraprocesados, aditivos artificiales: -2 puntos
+- Bajo valor nutricional (pocas proteínas, fibra): -1 punto
+
+Premie:
+- Alto contenido de proteína (>10g/100g): +1.5 puntos
+- Alto contenido de fibra (>5g/100g): +1 punto
+- Ingredientes naturales y simples: +2 puntos
+- Bajo en azúcar (<5g/100g): +1 punto
+
+NO des puntuaciones genéricas de 5/10. Sé ESPECÍFICO y CRÍTICO basándote en los valores reales.
+
+Formato de respuesta:
+Puntuación: [número exacto del 0-10]
+Razón: [Explicación detallada con emojis relevantes, sin usar asteriscos. Usa emojis para hacer el análisis más visual y amigable]`;
 
     try {
       const response = await generateText({ messages: [{ role: 'user', content: prompt }] });
       
-      const scoreMatch = response.match(/Puntuación:\s*(\d+)/i);
+      const scoreMatch = response.match(/Puntuación:\s*(\d+(?:\.\d+)?)/i);
       const reasonMatch = response.match(/Razón:\s*(.+)/is);
       
-      const score = scoreMatch ? parseInt(scoreMatch[1]) : 5;
-      const reason = reasonMatch ? reasonMatch[1].trim() : response;
+      let score = 5;
+      if (scoreMatch) {
+        score = Math.round(parseFloat(scoreMatch[1]));
+      }
+      
+      let reason = reasonMatch ? reasonMatch[1].trim() : response;
+      
+      reason = reason.replace(/\*/g, '');
+      reason = reason.replace(/Razón:\s*/i, '');
       
       return {
         score: Math.min(10, Math.max(0, score)),
