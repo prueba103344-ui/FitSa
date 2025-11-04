@@ -17,11 +17,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useApp } from '@/contexts/AppContext';
 import colors from '@/constants/colors';
-import { ArrowLeft, Plus, X, Trash2, Sparkles, ImageUp } from 'lucide-react-native';
+import { ArrowLeft, Plus, X, Trash2, Sparkles, ImageUp, ScanBarcode } from 'lucide-react-native';
 import { Meal, Ingredient, Direction, Food } from '@/types';
+import { Modal } from 'react-native';
 import { generateObject } from '@rork/toolkit-sdk';
 import KeyboardAware from '@/components/KeyboardAware';
 import * as ImagePicker from 'expo-image-picker';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { z } from 'zod';
 import { findNutritionItem, NutritionItem } from '@/constants/nutrition';
 
@@ -42,6 +44,10 @@ export default function CreateMealScreen() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [directions, setDirections] = useState<Direction[]>([]);
   const [isGeneratingMacros, setIsGeneratingMacros] = useState<boolean>(false);
+  const [showScanModal, setShowScanModal] = useState<boolean>(false);
+  const [isScanning, setIsScanning] = useState<boolean>(true);
+  const [isScanAnalyzing, setIsScanAnalyzing] = useState<boolean>(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
   const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
@@ -50,6 +56,85 @@ export default function CreateMealScreen() {
   const [newIngredientUnit, setNewIngredientUnit] = useState<string>('g');
 
   const [newDirection, setNewDirection] = useState<string>('');
+
+  const openScanModal = async () => {
+    if (!cameraPermission) {
+      return;
+    }
+    
+    if (!cameraPermission.granted) {
+      const result = await requestCameraPermission();
+      if (!result.granted) {
+        Alert.alert('Permiso requerido', 'Necesitamos acceso a la cámara para escanear productos');
+        return;
+      }
+    }
+    
+    setShowScanModal(true);
+    setIsScanning(true);
+    setIsScanAnalyzing(false);
+  };
+
+  const closeScanModal = () => {
+    setShowScanModal(false);
+    setIsScanning(true);
+    setIsScanAnalyzing(false);
+  };
+
+  const handleBarCodeScanned = async ({ type, data }: { type: string; data: string }) => {
+    if (isScanAnalyzing) return;
+    
+    console.log('Barcode scanned:', type, data);
+    setIsScanning(false);
+    setIsScanAnalyzing(true);
+    
+    try {
+      const productInfo = await fetchProductInfo(data);
+      
+      if (!productInfo) {
+        Alert.alert('Error', 'No se pudo obtener información del producto');
+        setIsScanAnalyzing(false);
+        setIsScanning(true);
+        return;
+      }
+
+      setNewIngredientName(productInfo.name);
+      setNewIngredientQuantity('100');
+      setNewIngredientUnit('g');
+      
+      closeScanModal();
+      Alert.alert('Producto escaneado', `${productInfo.name} añadido. Ajusta la cantidad y presiona añadir ingrediente.`);
+    } catch (err: any) {
+      console.error('Error analyzing product:', err);
+      Alert.alert('Error', 'Error al escanear el producto');
+      setIsScanAnalyzing(false);
+      setIsScanning(true);
+    }
+  };
+
+  const fetchProductInfo = async (barcode: string) => {
+    try {
+      const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+      const data = await response.json();
+      
+      if (data.status === 0) {
+        throw new Error('Producto no encontrado');
+      }
+      
+      const product = data.product;
+      return {
+        name: product.product_name || 'Producto desconocido',
+        ingredients: product.ingredients_text || 'No disponible',
+        calories: product.nutriments?.['energy-kcal_100g'],
+        protein: product.nutriments?.proteins_100g,
+        carbs: product.nutriments?.carbohydrates_100g,
+        fat: product.nutriments?.fat_100g,
+      };
+    } catch (err) {
+      console.error('Error fetching product info:', err);
+      return null;
+    }
+  };
 
   const addIngredient = () => {
     if (!newIngredientName || !newIngredientName.trim()) {
@@ -629,10 +714,16 @@ export default function CreateMealScreen() {
                   placeholderTextColor={colors.textSecondary}
                 />
               </View>
-              <TouchableOpacity style={styles.addButton} onPress={addIngredient}>
-                <Plus size={20} color={colors.background} />
-                <Text style={styles.addButtonText}>Añadir Ingrediente</Text>
-              </TouchableOpacity>
+              <View style={styles.addIngredientButtons}>
+                <TouchableOpacity style={styles.scanIngredientButton} onPress={openScanModal}>
+                  <ScanBarcode size={20} color={colors.white} />
+                  <Text style={styles.scanIngredientButtonText}>Escanear</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.addButton, styles.addIngredientButton]} onPress={addIngredient}>
+                  <Plus size={20} color={colors.background} />
+                  <Text style={styles.addButtonText}>Añadir</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
@@ -689,6 +780,58 @@ export default function CreateMealScreen() {
           </ScrollView>
         </TouchableWithoutFeedback>
       </SafeAreaView>
+
+      <Modal
+        visible={showScanModal}
+        transparent
+        animationType="slide"
+        onRequestClose={closeScanModal}
+      >
+        <View style={styles.scanModalContainer}>
+          <SafeAreaView edges={['top']} style={styles.scanModalSafeArea}>
+            <View style={styles.scanModalHeader}>
+              <Text style={styles.scanModalTitle}>Escanear Producto</Text>
+              <TouchableOpacity onPress={closeScanModal} style={styles.scanModalCloseButton}>
+                <X color={colors.white} size={24} />
+              </TouchableOpacity>
+            </View>
+
+            {isScanning && !isScanAnalyzing && (
+              <>
+                <CameraView
+                  style={styles.scanCamera}
+                  facing="back"
+                  onBarcodeScanned={handleBarCodeScanned}
+                  barcodeScannerSettings={{
+                    barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39'],
+                  }}
+                />
+                <View style={styles.scanOverlay}>
+                  <View style={styles.scanBox}>
+                    <View style={[styles.scanCorner, styles.scanCornerTopLeft]} />
+                    <View style={[styles.scanCorner, styles.scanCornerTopRight]} />
+                    <View style={[styles.scanCorner, styles.scanCornerBottomLeft]} />
+                    <View style={[styles.scanCorner, styles.scanCornerBottomRight]} />
+                  </View>
+                  <View style={styles.scanInstructionContainer}>
+                    <ScanBarcode size={32} color={colors.white} />
+                    <Text style={styles.scanInstruction}>
+                      Centra el código de barras del producto
+                    </Text>
+                  </View>
+                </View>
+              </>
+            )}
+
+            {isScanAnalyzing && (
+              <View style={styles.scanAnalyzingContainer}>
+                <ActivityIndicator size="large" color={colors.accent} />
+                <Text style={styles.scanAnalyzingText}>Obteniendo información del producto...</Text>
+              </View>
+            )}
+          </SafeAreaView>
+        </View>
+      </Modal>
     </KeyboardAware>
   );
 }
@@ -976,5 +1119,125 @@ const styles = StyleSheet.create({
   dayOptionTextSelected: {
     color: colors.primary,
     fontWeight: '600' as const,
+  },
+  addIngredientButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  scanIngredientButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    padding: 16,
+    borderRadius: 12,
+  },
+  scanIngredientButtonText: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: colors.white,
+  },
+  addIngredientButton: {
+    flex: 1,
+  },
+  scanModalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scanModalSafeArea: {
+    flex: 1,
+  },
+  scanModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  scanModalTitle: {
+    fontSize: 18,
+    fontWeight: '800' as const,
+    color: colors.white,
+  },
+  scanModalCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scanCamera: {
+    flex: 1,
+  },
+  scanOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  scanBox: {
+    width: 280,
+    height: 280,
+    position: 'relative' as const,
+  },
+  scanCorner: {
+    position: 'absolute' as const,
+    width: 40,
+    height: 40,
+    borderColor: colors.accent,
+  },
+  scanCornerTopLeft: {
+    top: 0,
+    left: 0,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+  },
+  scanCornerTopRight: {
+    top: 0,
+    right: 0,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+  },
+  scanCornerBottomLeft: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+  },
+  scanCornerBottomRight: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+  },
+  scanInstructionContainer: {
+    position: 'absolute' as const,
+    bottom: 100,
+    alignItems: 'center',
+    gap: 12,
+  },
+  scanInstruction: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: colors.white,
+    textAlign: 'center' as const,
+  },
+  scanAnalyzingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    padding: 40,
+  },
+  scanAnalyzingText: {
+    fontSize: 18,
+    fontWeight: '800' as const,
+    color: colors.white,
+    textAlign: 'center' as const,
   },
 });
