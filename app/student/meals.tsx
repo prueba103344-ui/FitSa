@@ -11,7 +11,10 @@ export default function StudentMealsScreen() {
   const { currentUser, dietPlans, refreshData } = useApp();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay());
+  const [selectedDay, setSelectedDay] = useState<number>(() => {
+    const day = new Date().getDay();
+    return day === 0 ? 6 : day - 1;
+  });
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   console.log('[StudentMeals] dietPlans:', dietPlans.length, 'currentUser:', currentUser?.id);
@@ -25,7 +28,7 @@ export default function StudentMealsScreen() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [favoriteMeals, setFavoriteMeals] = useState<Set<string>>(new Set());
 
-  const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
   if (!currentUser || currentUser.role !== 'student') {
     return (
@@ -38,7 +41,10 @@ export default function StudentMealsScreen() {
   }
 
   const student = currentUser as Student;
-  const studentDiet = dietPlans.find(plan => plan.studentId === student.id && (!plan.dayOfWeek || plan.dayOfWeek === selectedDay));
+  const studentDiet = dietPlans.find(plan => 
+    plan.studentId === student.id && 
+    (plan.dayOfWeek === undefined || plan.dayOfWeek === null || plan.dayOfWeek === selectedDay)
+  );
   console.log('[StudentMeals] Found diet:', studentDiet?.id, 'meals:', studentDiet?.meals.length || 0);
   const allMeals = studentDiet?.meals || [];
 
@@ -127,7 +133,7 @@ export default function StudentMealsScreen() {
               </TouchableOpacity>
               <View style={styles.dayInfo}>
                 <Text style={styles.dayName}>{daysOfWeek[selectedDay]}</Text>
-                <Text style={styles.daySubtext}>Día {selectedDay + 1}</Text>
+                <Text style={styles.daySubtext}>{new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</Text>
               </View>
               <TouchableOpacity onPress={nextDay} style={styles.dayArrow}>
                 <ChevronRight size={24} color={colors.white} />

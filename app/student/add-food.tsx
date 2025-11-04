@@ -18,6 +18,7 @@ import { colors } from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { generateObject } from '@rork/toolkit-sdk';
 import { z } from 'zod';
+import { Meal, DietPlan } from '@/types';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'mid-morning';
 
@@ -25,7 +26,11 @@ export default function AddFoodScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { currentUser, updateDietPlan, dietPlans } = useApp();
+  const { currentUser, updateDietPlan, dietPlans, addDietPlan } = useApp();
+  const selectedDay = params.day !== undefined ? parseInt(params.day as string) : (() => {
+    const day = new Date().getDay();
+    return day === 0 ? 6 : day - 1;
+  })();
   const [foodName, setFoodName] = useState<string>('');
   const [quantity, setQuantity] = useState<string>('100');
   const [mealType, setMealType] = useState<MealType>('breakfast');
@@ -38,7 +43,7 @@ export default function AddFoodScreen() {
   const [manualCarbs, setManualCarbs] = useState<string>('');
   const [manualFat, setManualFat] = useState<string>('');
 
-  const dayOfWeek = params.day ? parseInt(params.day as string) : new Date().getDay();
+
 
   const mealTypeLabels: Record<MealType, string> = {
     breakfast: '🌅 Desayuno',
@@ -168,11 +173,43 @@ Responde con valores exactos basados en bases de datos nutricionales estándar.`
     };
 
     const studentDiet = dietPlans.find(
-      (d) => d.studentId === currentUser.id && (!d.dayOfWeek || d.dayOfWeek === dayOfWeek)
+      (d) => d.studentId === currentUser.id && 
+      (d.dayOfWeek === undefined || d.dayOfWeek === null || d.dayOfWeek === selectedDay)
     );
 
+    const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
     if (!studentDiet) {
-      Alert.alert('Error', 'No hay plan de dieta asignado');
+      const mealId = `meal_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      const newMeal: Meal = {
+        id: mealId,
+        name: mealTypeLabels[mealType].split(' ')[1],
+        type: mealType,
+        foods: [newFood],
+        imageUrl: foodData.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600',
+      };
+
+      const newDiet: DietPlan = {
+        id: Date.now().toString(),
+        studentId: currentUser.id,
+        name: `Plan ${daysOfWeek[selectedDay]}`,
+        dayOfWeek: selectedDay,
+        meals: [newMeal],
+        totalCalories: newFood.calories,
+        totalProtein: newFood.protein,
+        totalCarbs: newFood.carbs,
+        totalFat: newFood.fat,
+        createdAt: new Date().toISOString(),
+      };
+
+      await addDietPlan(newDiet);
+
+      Alert.alert('¡Éxito!', 'Alimento añadido a tu dieta', [
+        {
+          text: 'OK',
+          onPress: () => router.back(),
+        },
+      ]);
       return;
     }
 

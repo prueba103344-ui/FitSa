@@ -31,6 +31,7 @@ export default function CreateMealScreen() {
   const router = useRouter();
   const { studentId } = useLocalSearchParams();
   const { addDietPlan, dietPlans, updateDietPlan } = useApp();
+  const [selectedDayOfWeek, setSelectedDayOfWeek] = useState<number>(0);
 
   const [mealName, setMealName] = useState<string>('');
   const [mealType, setMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('breakfast');
@@ -41,6 +42,8 @@ export default function CreateMealScreen() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [directions, setDirections] = useState<Direction[]>([]);
   const [isGeneratingMacros, setIsGeneratingMacros] = useState<boolean>(false);
+
+  const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
   const [newIngredientName, setNewIngredientName] = useState<string>('');
   const [newIngredientQuantity, setNewIngredientQuantity] = useState<string>('');
@@ -384,7 +387,9 @@ export default function CreateMealScreen() {
       directions,
     };
 
-    const existingDiet = dietPlans.find(plan => plan.studentId === studentId);
+    const existingDiet = dietPlans.find(plan => 
+      plan.studentId === studentId && plan.dayOfWeek === selectedDayOfWeek
+    );
 
     if (existingDiet) {
       const updatedMeals = [...existingDiet.meals, meal];
@@ -412,7 +417,8 @@ export default function CreateMealScreen() {
       await addDietPlan({
         id: Date.now().toString(),
         studentId: studentId as string,
-        name: 'Plan de Dieta',
+        name: `Plan ${daysOfWeek[selectedDayOfWeek]}`,
+        dayOfWeek: selectedDayOfWeek,
         meals: [meal],
         totalCalories: macros.calories,
         totalProtein: macros.protein,
@@ -454,6 +460,29 @@ export default function CreateMealScreen() {
           >
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Información Básica</Text>
+            
+            <Text style={styles.label}>Día de la Semana</Text>
+            <View style={styles.daysSelector}>
+              {daysOfWeek.map((day, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.dayOption,
+                    selectedDayOfWeek === index && styles.dayOptionSelected,
+                  ]}
+                  onPress={() => setSelectedDayOfWeek(index)}
+                >
+                  <Text
+                    style={[
+                      styles.dayOptionText,
+                      selectedDayOfWeek === index && styles.dayOptionTextSelected,
+                    ]}
+                  >
+                    {day}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             
             <Text style={styles.label}>Nombre de la comida</Text>
             <TextInput
@@ -921,5 +950,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600' as const,
     color: colors.white,
+  },
+  daysSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  dayOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: colors.card,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  dayOptionSelected: {
+    borderColor: colors.primary,
+    backgroundColor: (colors as any).primary + '20',
+  },
+  dayOptionText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  dayOptionTextSelected: {
+    color: colors.primary,
+    fontWeight: '600' as const,
   },
 });
