@@ -87,6 +87,12 @@ export default function StudentLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="add-food"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
