@@ -328,12 +328,19 @@ export const [AppProvider, useApp] = createContextHook(() => {
       allDiets.push(plan);
       await AsyncStorage.setItem(getKey('DIETS'), JSON.stringify(allDiets));
       console.log('[AppContext] Added diet plan for student:', plan.studentId);
-      const updated = [...dietPlans, plan];
-      setDietPlans(updated);
+      
+      if (currentUser?.role === 'trainer') {
+        const updated = [...dietPlans, plan];
+        setDietPlans(updated);
+      } else if (currentUser?.role === 'student' && plan.studentId === currentUser.id) {
+        const updated = [...dietPlans, plan];
+        setDietPlans(updated);
+        console.log('[AppContext] Updated student diet plans:', updated.length);
+      }
     } catch (error) {
       console.error('Error adding diet plan:', error);
     }
-  }, [dietPlans, getKey]);
+  }, [dietPlans, getKey, currentUser]);
 
   const updateDietPlan = useCallback(async (planId: string, updates: Partial<DietPlan>) => {
     try {
@@ -343,10 +350,12 @@ export const [AppProvider, useApp] = createContextHook(() => {
         plan.id === planId ? { ...plan, ...updates } : plan
       );
       await AsyncStorage.setItem(getKey('DIETS'), JSON.stringify(updatedAll));
+      
       const updated = dietPlans.map(plan => 
         plan.id === planId ? { ...plan, ...updates } : plan
       );
       setDietPlans(updated);
+      console.log('[AppContext] Updated diet plan:', planId);
     } catch (error) {
       console.error('Error updating diet plan:', error);
     }
@@ -480,6 +489,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       await AsyncStorage.setItem(getKey('DIETS'), JSON.stringify(updatedAll));
       const updated = dietPlans.filter(p => p.id !== planId);
       setDietPlans(updated);
+      console.log('[AppContext] Deleted diet plan:', planId);
     } catch (error) {
       console.error('Error deleting diet plan:', error);
     }
@@ -540,6 +550,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }
   }, [currentUser, getKey]);
 
+  const refreshData = useCallback(async () => {
+    await loadData();
+  }, [loadData]);
+
   return useMemo(() => ({
     currentUser,
     students,
@@ -571,6 +585,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     addScannedProduct,
     deleteScannedProduct,
     clearScanHistory,
+    refreshData,
   }), [
     currentUser,
     students,
@@ -602,5 +617,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     addScannedProduct,
     deleteScannedProduct,
     clearScanHistory,
+    refreshData,
   ]);
 });

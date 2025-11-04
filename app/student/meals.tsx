@@ -1,17 +1,18 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { Student, Meal } from '@/types';
-import { Search, Heart, Clock, Flame, ChevronLeft, ChevronRight, Plus } from 'lucide-react-native';
+import { Search, Heart, Clock, Flame, ChevronLeft, ChevronRight, Plus, RefreshCw } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
 export default function StudentMealsScreen() {
-  const { currentUser, dietPlans } = useApp();
+  const { currentUser, dietPlans, refreshData } = useApp();
   const router = useRouter();
   const params = useLocalSearchParams();
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay());
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   console.log('[StudentMeals] dietPlans:', dietPlans.length, 'currentUser:', currentUser?.id);
 
@@ -82,6 +83,15 @@ export default function StudentMealsScreen() {
     setSelectedDay((selectedDay - 1 + 7) % 7);
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshData();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView 
       style={styles.container}
@@ -98,6 +108,17 @@ export default function StudentMealsScreen() {
           <View style={styles.header}>
             <View style={styles.headerTop}>
               <Text style={styles.title}>Mis Comidas</Text>
+              <TouchableOpacity 
+                onPress={handleRefresh} 
+                style={styles.refreshButton}
+                disabled={isRefreshing}
+              >
+                {isRefreshing ? (
+                  <ActivityIndicator size="small" color={colors.accent} />
+                ) : (
+                  <RefreshCw size={20} color={colors.accent} />
+                )}
+              </TouchableOpacity>
             </View>
             
             <View style={styles.daySelector}>
@@ -421,6 +442,16 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center' as const,
     marginTop: 40,
+  },
+  refreshButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.accent + '40',
   },
   fabButton: {
     position: 'absolute' as const,
