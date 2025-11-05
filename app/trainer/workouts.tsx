@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState } from 'react';
-import { Plus, X, Trash2, Dumbbell, ImageUp, ChevronDown, Heart } from 'lucide-react-native';
+import { useState, useMemo } from 'react';
+import { Plus, X, Trash2, Dumbbell, ImageUp, ChevronDown, Heart, Search } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { WorkoutPlan, Exercise, ExerciseSet, Trainer } from '@/types';
@@ -27,6 +27,7 @@ export default function TrainerWorkoutsScreen() {
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
   const [editingPlan, setEditingPlan] = useState<WorkoutPlan | null>(null);
   const [isPickingSuggestion, setIsPickingSuggestion] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const exercisesCatalog = trpc.exercises.list.useQuery(undefined, { staleTime: 60_000 });
   type CatalogItem = { id?: string; name: string; imageUrl: string };
   const predefinedCatalog: CatalogItem[] = [
@@ -44,6 +45,16 @@ export default function TrainerWorkoutsScreen() {
 
   const trainer = currentUser as Trainer;
   const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+  const filteredWorkoutPlans = useMemo(() => {
+    if (!searchQuery.trim()) return workoutPlans;
+    
+    const query = searchQuery.toLowerCase();
+    return workoutPlans.filter(plan => {
+      const student = students.find(s => s.id === plan.studentId);
+      return student?.name.toLowerCase().includes(query);
+    });
+  }, [workoutPlans, students, searchQuery]);
 
   const handleAddSet = () => {
     if (currentExerciseType === 'cardio') {
@@ -215,8 +226,24 @@ export default function TrainerWorkoutsScreen() {
               <Plus color={colors.white} size={24} />
             </TouchableOpacity>
           </View>
+          
+          <View style={styles.searchContainer}>
+            <Search color={colors.textSecondary} size={20} />
+            <TextInput
+              style={styles.searchInput}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Buscar por alumno..."
+              placeholderTextColor={colors.textSecondary}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <X color={colors.textSecondary} size={20} />
+              </TouchableOpacity>
+            )}
+          </View>
         </SafeAreaView>
-        {workoutPlans.map((plan) => {
+        {filteredWorkoutPlans.map((plan) => {
           const student = students.find(s => s.id === plan.studentId);
           const isExpanded = expandedPlan === plan.id;
           return (
@@ -980,5 +1007,21 @@ const styles = StyleSheet.create({
   typeOptionTextSelected: {
     color: colors.primary,
     fontWeight: '700' as const,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    gap: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.white,
   },
 });

@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState } from 'react';
-import { Plus, X, Trash2, UtensilsCrossed, Edit2, Sparkles } from 'lucide-react-native';
+import { useState, useMemo } from 'react';
+import { Plus, X, Trash2, UtensilsCrossed, Edit2, Sparkles, Search } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { DietPlan, Meal, Food, Trainer } from '@/types';
@@ -29,9 +29,20 @@ export default function TrainerDietsScreen() {
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState<number>(0);
   const [editingMeal, setEditingMeal] = useState<{ planId: string; mealIndex: number } | null>(null);
   const [editingFood, setEditingFood] = useState<{ mealIndex: number; foodIndex: number } | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const trainer = currentUser as Trainer;
   const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+  const filteredDietPlans = useMemo(() => {
+    if (!searchQuery.trim()) return dietPlans;
+    
+    const query = searchQuery.toLowerCase();
+    return dietPlans.filter(plan => {
+      const student = students.find(s => s.id === plan.studentId);
+      return student?.name.toLowerCase().includes(query);
+    });
+  }, [dietPlans, students, searchQuery]);
 
   const generateMacrosWithAI = async () => {
     if (!foodName.trim()) {
@@ -242,8 +253,24 @@ export default function TrainerDietsScreen() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.searchContainer}>
+        <Search color={colors.textSecondary} size={20} />
+        <TextInput
+          style={styles.searchInput}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Buscar por alumno..."
+          placeholderTextColor={colors.textSecondary}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <X color={colors.textSecondary} size={20} />
+          </TouchableOpacity>
+        )}
+      </View>
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {dietPlans.map((plan) => {
+        {filteredDietPlans.map((plan) => {
           const student = students.find(s => s.id === plan.studentId);
           const isExpanded = expandedPlan === plan.id;
           return (
@@ -963,5 +990,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.accent,
     marginTop: 2,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    gap: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.white,
   },
 });
