@@ -715,11 +715,19 @@ export default function CreateMealScreen() {
                 />
               </View>
               <View style={styles.addIngredientButtons}>
-                <TouchableOpacity style={styles.scanIngredientButton} onPress={openScanModal}>
+                <TouchableOpacity 
+                  style={styles.scanIngredientButton} 
+                  onPress={openScanModal}
+                  testID="scan-ingredient-button"
+                >
                   <ScanBarcode size={20} color={colors.white} />
                   <Text style={styles.scanIngredientButtonText}>Escanear</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.addButton, styles.addIngredientButton]} onPress={addIngredient}>
+                <TouchableOpacity 
+                  style={[styles.addButton, styles.addIngredientButton]} 
+                  onPress={addIngredient}
+                  testID="add-ingredient-button"
+                >
                   <Plus size={20} color={colors.background} />
                   <Text style={styles.addButtonText}>Añadir</Text>
                 </TouchableOpacity>
