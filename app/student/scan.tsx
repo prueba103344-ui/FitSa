@@ -342,6 +342,9 @@ Razón: [Explicación detallada con emojis relevantes, sin usar asteriscos. Usa 
         plannedFat: parseFloat(((analysis.macros?.fat || 0) * multiplier).toFixed(1)),
       };
 
+      console.log('[Scan] Looking for diet for student:', currentUser.id);
+      console.log('[Scan] Available diets:', dietPlans.length);
+      
       const studentDiet = dietPlans.find(d => d.studentId === currentUser.id);
       
       if (!studentDiet) {
@@ -349,6 +352,8 @@ Razón: [Explicación detallada con emojis relevantes, sin usar asteriscos. Usa 
         setIsAddingToDiet(false);
         return;
       }
+
+      console.log('[Scan] Found diet:', studentDiet.id);
 
       const mealTypeLabels: Record<typeof addMealType, string> = {
         breakfast: 'Desayuno',
@@ -358,18 +363,14 @@ Razón: [Explicación detallada con emojis relevantes, sin usar asteriscos. Usa 
         dinner: 'Cena',
       };
 
-      const existingMeal = studentDiet.meals.find(m => m.type === addMealType);
+      const updatedMeals = [...studentDiet.meals];
+      const existingMealIndex = updatedMeals.findIndex(m => m.type === addMealType);
 
-      if (existingMeal) {
-        existingMeal.foods.push(newFood);
-
-        await updateDietPlan(studentDiet.id, {
-          meals: studentDiet.meals,
-          totalCalories: studentDiet.totalCalories + newFood.calories,
-          totalProtein: studentDiet.totalProtein + newFood.protein,
-          totalCarbs: studentDiet.totalCarbs + newFood.carbs,
-          totalFat: studentDiet.totalFat + newFood.fat,
-        });
+      if (existingMealIndex >= 0) {
+        updatedMeals[existingMealIndex] = {
+          ...updatedMeals[existingMealIndex],
+          foods: [...updatedMeals[existingMealIndex].foods, newFood],
+        };
       } else {
         const mealId = `meal_${Date.now()}_${Math.random().toString(36).substring(7)}`;
         const newMeal = {
@@ -379,17 +380,20 @@ Razón: [Explicación detallada con emojis relevantes, sin usar asteriscos. Usa 
           foods: [newFood],
           imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600',
         };
-
-        studentDiet.meals.push(newMeal);
-
-        await updateDietPlan(studentDiet.id, {
-          meals: studentDiet.meals,
-          totalCalories: studentDiet.totalCalories + newFood.calories,
-          totalProtein: studentDiet.totalProtein + newFood.protein,
-          totalCarbs: studentDiet.totalCarbs + newFood.carbs,
-          totalFat: studentDiet.totalFat + newFood.fat,
-        });
+        updatedMeals.push(newMeal);
       }
+
+      console.log('[Scan] Updating diet with', updatedMeals.length, 'meals');
+
+      await updateDietPlan(studentDiet.id, {
+        meals: updatedMeals,
+        totalCalories: studentDiet.totalCalories + newFood.calories,
+        totalProtein: studentDiet.totalProtein + newFood.protein,
+        totalCarbs: studentDiet.totalCarbs + newFood.carbs,
+        totalFat: studentDiet.totalFat + newFood.fat,
+      });
+
+      console.log('[Scan] Diet updated successfully');
 
       setShowAddModal(false);
       Alert.alert('¡Éxito!', 'Producto añadido a tu dieta');
